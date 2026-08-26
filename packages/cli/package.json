@@ -17,6 +17,9 @@
   "files": [
     "dist"
   ],
+  "dependencies": {
+    "@avis/core": "workspace:*"
+  },
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "typecheck": "tsc --noEmit -p tsconfig.json"

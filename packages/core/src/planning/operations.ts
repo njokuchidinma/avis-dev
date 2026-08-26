@@ -42,7 +42,8 @@ export interface JsonMergeOperation extends BaseOperation {
 export interface TextPatchOperation extends BaseOperation {
   type: "text.patch";
   path: string;
-  patch: string;
+  search: string;
+  replace: string;
 }
 
 export interface EnvEnsureOperation extends BaseOperation {
