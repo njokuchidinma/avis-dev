@@ -15,13 +15,14 @@ usage() {
 Usage:
   pnpm test:manual:zustand -- fresh
   pnpm test:manual:zustand -- installed
-  pnpm test:manual:zustand -- run
+  pnpm test:manual:zustand -- apply
   pnpm test:manual:zustand -- show
 
 Modes:
   fresh      Create a disposable Next.js-like fixture without Zustand installed.
   installed  Create the fixture with Zustand already listed in package.json.
-  run        Run the built Avis CLI against the fixture.
+  apply      Run the built Avis CLI against the fixture.
+  run        Alias for apply.
   show       Print the fixture files that matter for this test.
 
 Environment:
@@ -52,13 +53,13 @@ write_package_json() {
   "name": "avis-next-zustand-test",
   "packageManager": "pnpm@11.24.0",
   "dependencies": {
-    "next": "16.0.0",
-    "react": "20.0.0",
-    "react-dom": "20.0.0",
+    "next": "14.2.0",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
     "zustand": "5.0.0"
   },
   "devDependencies": {
-    "typescript": "7.0.0"
+    "typescript": "5.4.5"
   }
 }
 JSON
@@ -68,12 +69,12 @@ JSON
   "name": "avis-next-zustand-test",
   "packageManager": "pnpm@11.24.0",
   "dependencies": {
-    "next": "16.0.0",
-    "react": "20.0.0",
-    "react-dom": "20.0.0"
+    "next": "14.2.0",
+    "react": "18.3.1",
+    "react-dom": "18.3.1"
   },
   "devDependencies": {
-    "typescript": "7.0.0"
+    "typescript": "5.4.5"
   }
 }
 JSON
@@ -88,7 +89,7 @@ Fixture ready:
   $FIXTURE_DIR
 
 Run Avis against it:
-  pnpm test:manual:zustand -- run
+  pnpm test:manual:zustand -- apply
 
 Inspect fixture state:
   pnpm test:manual:zustand -- show
@@ -146,7 +147,7 @@ case "$MODE" in
     write_package_json "yes"
     print_next_steps
     ;;
-  run)
+  apply|run)
     run_avis
     ;;
   show)

@@ -13,6 +13,24 @@ CI=true pnpm build
 
 `CI=true` avoids pnpm prompting in non-interactive terminals.
 
+## Command Names
+
+The intended product command is:
+
+```bash
+avis add zustand
+```
+
+Avis is not globally installed yet, so these manual tests use a wrapper script that calls the built CLI from inside a disposable fixture.
+
+In the test script, `apply` means "run the built Avis CLI against the fixture":
+
+```bash
+CI=true pnpm test:manual:zustand -- apply
+```
+
+There is no intended `avis run` command right now.
+
 ## Test 1: Next.js + Zustand First Slice
 
 This test exercises the current end-to-end flow:
@@ -37,7 +55,7 @@ CI=true pnpm test:manual:zustand -- fresh
 Run Avis:
 
 ```bash
-CI=true pnpm test:manual:zustand -- run
+CI=true pnpm test:manual:zustand -- apply
 ```
 
 Expected preview:
@@ -88,7 +106,7 @@ CI=true pnpm test:manual:zustand -- installed
 Run Avis:
 
 ```bash
-CI=true pnpm test:manual:zustand -- run
+CI=true pnpm test:manual:zustand -- apply
 ```
 
 Expected preview:
@@ -125,7 +143,7 @@ CI=true pnpm test:manual:zustand -- show
 Run Avis again:
 
 ```bash
-CI=true pnpm test:manual:zustand -- run
+CI=true pnpm test:manual:zustand -- apply
 ```
 
 Expected result:
@@ -150,7 +168,7 @@ If you want to test actual package installation, use the fresh fixture:
 
 ```bash
 CI=true pnpm test:manual:zustand -- fresh
-CI=true pnpm test:manual:zustand -- run
+CI=true pnpm test:manual:zustand -- apply
 ```
 
 Answer `y`.

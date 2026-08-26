@@ -5,6 +5,7 @@
   "private": true,
   "license": "UNLICENSED",
   "scripts": {
+    "avis": "node packages/cli/dist/index.js",
     "build": "pnpm -r build",
     "test:manual:zustand": "bash scripts/manual-zustand-test.sh",
     "typecheck": "pnpm -r typecheck",
