@@ -6,6 +6,7 @@
   "license": "UNLICENSED",
   "scripts": {
     "build": "pnpm -r build",
+    "test:manual:zustand": "bash scripts/manual-zustand-test.sh",
     "typecheck": "pnpm -r typecheck",
     "test": "pnpm --filter @avis/core test"
   },
