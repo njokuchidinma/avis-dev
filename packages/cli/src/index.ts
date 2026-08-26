@@ -3,26 +3,28 @@ import { createInterface } from "node:readline/promises";
 import { stdin as input, stdout as output } from "node:process";
 import {
   applyChangePlan,
+  builtInCapabilities,
+  builtInIntegrations,
   createProjectContext,
   detectProject,
+  findCapabilityById,
+  findCompatibleIntegrationsForCapability,
+  findIntegrationById,
   formatChangePlan,
   isEmptyChangePlan,
   runPackageManagerCommand,
   validateChangePlan,
-  zustandIntegration,
   type AvisIntegration,
+  type ProjectContext,
   type VerificationResult
 } from "@avis/core";
 
-const integrations = new Map<string, AvisIntegration>([
-  [zustandIntegration.id, zustandIntegration]
-]);
-
 export async function runCli(argv = process.argv.slice(2)): Promise<void> {
-  const [command, subject] = argv;
+  const args = argv[0] === "--" ? argv.slice(1) : argv;
+  const [command, subject] = args;
 
   if (!command) {
-    printHelp();
+    await runAddInteractive();
     return;
   }
 
@@ -31,18 +33,66 @@ export async function runCli(argv = process.argv.slice(2)): Promise<void> {
     return;
   }
 
+  if (command === "add") {
+    await runAddInteractive();
+    return;
+  }
+
+  if (command === "list") {
+    printList();
+    return;
+  }
+
+  if (command === "doctor") {
+    await runDoctor();
+    return;
+  }
+
   printHelp();
 }
 
 async function runAdd(subject: string): Promise<void> {
-  const integration = integrations.get(subject);
+  const context = await detectSingleProjectContext();
+  if (!context) {
+    return;
+  }
+
+  const integration = await resolveIntegration(subject, context);
 
   if (!integration) {
-    console.error(`Unknown integration or capability: ${subject}`);
+    console.error(`No compatible integration found for: ${subject}`);
     process.exitCode = 1;
     return;
   }
 
+  await planConfirmApplyAndVerify(integration, context);
+}
+
+async function runAddInteractive(): Promise<void> {
+  const context = await detectSingleProjectContext();
+  if (!context) {
+    printHelp();
+    return;
+  }
+
+  console.log(formatDetectedProject(context));
+  console.log("");
+  console.log("Capabilities:");
+  for (const capability of builtInCapabilities) {
+    const compatible = findCompatibleIntegrationsForCapability(capability.id, context);
+    console.log(
+      `- ${capability.id}${compatible.length > 0 ? ` (${compatible.length} compatible)` : ""}`
+    );
+  }
+  console.log("");
+  console.log("Run one of:");
+  console.log("  avis add state-management");
+  console.log("  avis add data-fetching");
+  console.log("  avis add api");
+  console.log("  avis add zustand");
+}
+
+async function detectSingleProjectContext(): Promise<ProjectContext | undefined> {
   const detection = await detectProject(process.cwd());
   const target = detection.targets[0];
 
@@ -52,10 +102,49 @@ async function runAdd(subject: string): Promise<void> {
       console.error(`- ${diagnostic.message}`);
     }
     process.exitCode = 1;
-    return;
+    return undefined;
   }
 
-  const context = createProjectContext(detection, target);
+  return createProjectContext(detection, target);
+}
+
+async function resolveIntegration(
+  subject: string,
+  context: ProjectContext
+): Promise<AvisIntegration | undefined> {
+  const directIntegration = findIntegrationById(subject);
+  if (directIntegration) {
+    return directIntegration;
+  }
+
+  const capability = findCapabilityById(subject);
+  if (!capability) {
+    return undefined;
+  }
+
+  const compatible = findCompatibleIntegrationsForCapability(capability.id, context);
+  if (compatible.length === 1) {
+    return compatible[0];
+  }
+
+  if (compatible.length === 0) {
+    console.error(`No compatible integrations found for ${capability.name}.`);
+    return undefined;
+  }
+
+  console.log(`${capability.name} integrations:`);
+  for (const integration of compatible) {
+    console.log(`- ${integration.id} (${integration.name})`);
+  }
+  console.log("");
+  console.log(`Run avis add <integration>, for example: avis add ${compatible[0]?.id}`);
+  return undefined;
+}
+
+async function planConfirmApplyAndVerify(
+  integration: AvisIntegration,
+  context: ProjectContext
+): Promise<void> {
   const compatibility = integration.isCompatible(context);
 
   if (!compatibility.supported) {
@@ -85,7 +174,6 @@ async function runAdd(subject: string): Promise<void> {
 
   if (isEmptyChangePlan(plan)) {
     console.log("");
-    console.log("No changes required.");
     await printVerification(integration, context);
     return;
   }
@@ -107,15 +195,65 @@ async function runAdd(subject: string): Promise<void> {
   await printVerification(integration, context);
 }
 
+async function runDoctor(): Promise<void> {
+  const context = await detectSingleProjectContext();
+  if (!context) {
+    return;
+  }
+
+  console.log("Avis Project Health");
+  console.log("");
+  console.log(formatDetectedProject(context));
+
+  const compatibleIntegrations = builtInIntegrations.filter(
+    (integration) => integration.isCompatible(context).supported && integration.verify
+  );
+
+  if (compatibleIntegrations.length === 0) {
+    console.log("");
+    console.log("No compatible verifiers found for this project yet.");
+    return;
+  }
+
+  for (const integration of compatibleIntegrations) {
+    const verification = await integration.verify?.(context);
+    if (!verification) {
+      continue;
+    }
+
+    console.log("");
+    console.log(`${integration.name}: ${verification.status.toUpperCase()}`);
+    console.log(formatVerification(verification));
+  }
+}
+
 function printHelp(): void {
   console.log(`Avis
 
 Usage:
+  avis
+  avis add
+  avis add <capability>
   avis add zustand
+  avis list
+  avis doctor
 `);
 }
 
-function formatDetectedProject(context: ReturnType<typeof createProjectContext>): string {
+function printList(): void {
+  console.log("Capabilities:");
+  for (const capability of builtInCapabilities) {
+    console.log(`- ${capability.id}: ${capability.name}`);
+  }
+
+  console.log("");
+  console.log("Integrations:");
+  for (const integration of builtInIntegrations) {
+    console.log(`- ${integration.id}: ${integration.name} (${integration.capability})`);
+  }
+}
+
+function formatDetectedProject(context: ProjectContext): string {
   return [
     "Detected:",
     `Framework: ${context.framework?.id ?? "unknown"}`,
@@ -127,7 +265,7 @@ function formatDetectedProject(context: ReturnType<typeof createProjectContext>)
 
 async function printVerification(
   integration: AvisIntegration,
-  context: ReturnType<typeof createProjectContext>
+  context: ProjectContext
 ): Promise<void> {
   if (!integration.verify) {
     return;

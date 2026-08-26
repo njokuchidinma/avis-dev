@@ -31,6 +31,16 @@ CI=true pnpm test:manual:zustand -- apply
 
 There is no intended `avis run` command right now.
 
+Useful development shims from the Avis repo root:
+
+```bash
+CI=true pnpm avis --
+CI=true pnpm avis -- list
+CI=true pnpm avis -- doctor
+```
+
+`pnpm avis -- <args>` runs the built CLI directly.
+
 ## Test 1: Next.js + Zustand First Slice
 
 This test exercises the current end-to-end flow:
@@ -153,14 +163,10 @@ Avis will make these changes:
 
 No changes required.
 
-No changes required.
-
 Verification:
 OK dependency installed
 OK store detected
 ```
-
-The duplicate "No changes required." text is current CLI behavior and can be polished later.
 
 ### D. Optional Real Install Test
 
@@ -180,3 +186,181 @@ pnpm add zustand
 ```
 
 This requires network access unless the package is already cached.
+
+## Test 2: Next.js + TanStack Query
+
+This test exercises:
+
+- capability/direct integration routing for `data-fetching`
+- dependency planning for `@tanstack/react-query`
+- provider file creation
+- idempotence
+- doctor warnings/checks for Node integrations
+
+### A. Apply Without Network
+
+Create a fixture that already lists TanStack Query:
+
+```bash
+CI=true pnpm test:manual:query -- installed
+```
+
+Run Avis:
+
+```bash
+CI=true pnpm test:manual:query -- apply
+```
+
+Expected preview:
+
+```text
+Avis will make these changes:
+
+Files
++ src/app/providers.tsx
+
+Apply changes? [y/N]
+```
+
+Answer `y`.
+
+Expected result includes:
+
+```text
+OK Created src/app/providers.tsx.
+
+Verification:
+OK dependency installed
+OK provider detected
+```
+
+Rerun for idempotence:
+
+```bash
+CI=true pnpm test:manual:query -- apply
+```
+
+Expected result includes:
+
+```text
+No changes required.
+```
+
+Inspect the fixture:
+
+```bash
+CI=true pnpm test:manual:query -- show
+```
+
+Run doctor:
+
+```bash
+CI=true pnpm test:manual:query -- doctor
+```
+
+### B. Optional Real Install Test
+
+```bash
+CI=true pnpm test:manual:query -- fresh
+CI=true pnpm test:manual:query -- apply
+```
+
+Answer `y`.
+
+Avis will run:
+
+```bash
+pnpm add @tanstack/react-query
+```
+
+This requires network access unless the package is already cached.
+
+## Test 3: Django + Django REST Framework
+
+This test exercises:
+
+- Python project detection
+- Django detection
+- `pip` detection through `requirements.txt`
+- DRF dependency planning
+- safe `settings.py` patching
+- idempotence
+- `avis doctor` for a Python/Django target
+
+### A. Apply Without Network
+
+Create a fixture that already lists DRF:
+
+```bash
+CI=true pnpm test:manual:drf -- installed
+```
+
+Run Avis:
+
+```bash
+CI=true pnpm test:manual:drf -- apply
+```
+
+Expected preview:
+
+```text
+Avis will make these changes:
+
+Files
+~ config/settings.py
+
+Apply changes? [y/N]
+```
+
+Answer `y`.
+
+Expected result includes:
+
+```text
+OK Patched config/settings.py.
+
+Verification:
+OK dependency installed
+OK rest_framework configured
+```
+
+Rerun for idempotence:
+
+```bash
+CI=true pnpm test:manual:drf -- apply
+```
+
+Expected result includes:
+
+```text
+No changes required.
+```
+
+Inspect the fixture:
+
+```bash
+CI=true pnpm test:manual:drf -- show
+```
+
+Run doctor:
+
+```bash
+CI=true pnpm test:manual:drf -- doctor
+```
+
+### B. Optional Real Install Test
+
+```bash
+CI=true pnpm test:manual:drf -- fresh
+CI=true pnpm test:manual:drf -- apply
+```
+
+Answer `y`.
+
+Avis will run:
+
+```bash
+python -m pip install djangorestframework
+```
+
+This requires network access unless the package is already available locally.
