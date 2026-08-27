@@ -68,7 +68,7 @@ describe("reactHookFormIntegration", () => {
     const verification = await reactHookFormIntegration.verify?.(context);
 
     expect(secondPlan.operations).toEqual([]);
-    expect(verification?.status).toBe("pass");
+    expect(verification?.health).toBe("healthy");
   });
 });
 

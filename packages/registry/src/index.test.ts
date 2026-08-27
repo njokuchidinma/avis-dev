@@ -44,7 +44,10 @@ describe("manifest validation", () => {
       validateIntegrationManifest({
         id: "",
         name: "Broken",
+        description: "",
         capability: "",
+        version: "",
+        status: "stable",
         supports: {
           ecosystems: []
         }
@@ -54,6 +57,8 @@ describe("manifest validation", () => {
       errors: [
         "Integration id is required.",
         "Integration capability is required.",
+        "Integration description is required.",
+        "Integration version is required.",
         "Integration must support at least one ecosystem."
       ]
     });
@@ -93,12 +98,17 @@ const unknownNodeContext: ProjectContext = {
 };
 
 const nextIntegration: AvisIntegration = {
-  id: "zustand",
-  name: "Zustand",
-  capability: "state-management",
-  supports: {
-    ecosystems: ["node"],
-    frameworks: ["nextjs"]
+  manifest: {
+    id: "zustand",
+    name: "Zustand",
+    description: "State management.",
+    capability: "state-management",
+    version: "1.0.0",
+    status: "stable",
+    supports: {
+      ecosystems: ["node"],
+      frameworks: ["nextjs"]
+    }
   },
   isCompatible: (context) =>
     context.framework?.id === "nextjs"

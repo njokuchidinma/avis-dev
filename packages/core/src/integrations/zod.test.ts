@@ -65,7 +65,7 @@ describe("zodIntegration", () => {
     const verification = await zodIntegration.verify?.(context);
 
     expect(secondPlan.operations).toEqual([]);
-    expect(verification?.status).toBe("pass");
+    expect(verification?.health).toBe("healthy");
   });
 });
 

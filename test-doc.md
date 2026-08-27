@@ -41,6 +41,18 @@ CI=true pnpm avis -- doctor
 
 `pnpm avis -- <args>` runs the built CLI directly.
 
+## Doctor Health States
+
+`avis doctor` now reports integration health separately from individual checks:
+
+- `NOT INSTALLED`: the integration is compatible with the project but has not been added.
+- `HEALTHY`: required dependency and expected starter configuration are present.
+- `PARTIAL`: the dependency is present but expected configuration is missing.
+- `BROKEN`: Avis found a failing installed/configured integration check.
+- `UNKNOWN`: Avis could not determine health safely.
+
+This distinction matters: a compatible integration that has not been added yet should not be treated as broken.
+
 ## Test 1: Next.js + Zustand First Slice
 
 This test exercises the current end-to-end flow:
@@ -258,6 +270,14 @@ Run doctor:
 CI=true pnpm test:manual:query -- doctor
 ```
 
+Expected doctor output includes:
+
+```text
+TanStack Query: HEALTHY
+```
+
+Other compatible Next.js integrations may appear as `NOT INSTALLED`.
+
 ### B. Optional Real Install Test
 
 ```bash
@@ -410,6 +430,14 @@ Run doctor:
 CI=true pnpm test:manual:next -- zod doctor
 ```
 
+Expected doctor output includes:
+
+```text
+Zod: HEALTHY
+```
+
+Other compatible Next.js integrations may appear as `NOT INSTALLED`.
+
 ### React Hook Form
 
 Create a fixture that already lists React Hook Form:
@@ -447,6 +475,14 @@ Run doctor:
 ```bash
 CI=true pnpm test:manual:next -- react-hook-form doctor
 ```
+
+Expected doctor output includes:
+
+```text
+React Hook Form: HEALTHY
+```
+
+Other compatible Next.js integrations may appear as `NOT INSTALLED`.
 
 ### Capability Routing
 

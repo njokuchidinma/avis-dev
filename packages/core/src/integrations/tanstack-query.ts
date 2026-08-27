@@ -10,12 +10,26 @@ import type { AvisIntegration, CompatibilityResult } from "./types.js";
 const packageName = "@tanstack/react-query";
 
 export const tanstackQueryIntegration: AvisIntegration = {
-  id: "tanstack-query",
-  name: "TanStack Query",
-  capability: "data-fetching",
-  supports: {
-    ecosystems: [ecosystems.node],
-    frameworks: [frameworks.nextjs]
+  manifest: {
+    id: "tanstack-query",
+    name: "TanStack Query",
+    description: "Server-state fetching, caching, and synchronization for React applications.",
+    capability: "data-fetching",
+    version: "1.0.0",
+    status: "stable",
+    supports: {
+      ecosystems: [ecosystems.node],
+      frameworks: [frameworks.nextjs],
+      packageManagers: [
+        packageManagers.npm,
+        packageManagers.pnpm,
+        packageManagers.yarn,
+        packageManagers.bun
+      ]
+    },
+    dependencies: [{ name: packageName, type: "runtime" }],
+    configures: ["runtime dependency", "QueryClient provider module"],
+    source: { owner: "avis" }
   },
   isCompatible: isTanStackQueryCompatible,
   plan: async ({ context }): Promise<ChangePlan> => {
@@ -127,21 +141,25 @@ async function verifyTanStackQuery(
     {
       id: "tanstack-query-dependency",
       label: "dependency installed",
-      status: dependencyInstalled ? "pass" : "fail",
-      message: dependencyInstalled ? undefined : `${packageName} is missing from package.json.`
+      status: dependencyInstalled ? "pass" : "skipped",
+      message: dependencyInstalled ? undefined : `${packageName} is not installed.`,
+      remediation: dependencyInstalled ? undefined : "Run avis add tanstack-query."
     },
     {
       id: "tanstack-query-provider",
       label: "provider detected",
-      status: providerExists ? "pass" : "warning",
-      message: providerExists ? undefined : `${providerPath} was not found.`
+      status: providerExists ? "pass" : dependencyInstalled ? "warning" : "skipped",
+      message: providerExists ? undefined : `${providerPath} was not found.`,
+      remediation: providerExists
+        ? undefined
+        : "Run avis add tanstack-query to create the provider module."
     }
   ] as const;
-  const hasFailure = checks.some((check) => check.status === "fail");
   const hasWarning = checks.some((check) => check.status === "warning");
 
   return {
-    status: hasFailure ? "fail" : hasWarning ? "warning" : "pass",
+    integrationId: "tanstack-query",
+    health: dependencyInstalled ? (hasWarning ? "partial" : "healthy") : "not-installed",
     checks: [...checks],
     diagnostics: []
   };

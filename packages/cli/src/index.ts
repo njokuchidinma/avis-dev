@@ -161,10 +161,12 @@ async function resolveIntegration(
 
   console.log(`${capability.name} integrations:`);
   for (const integration of compatible) {
-    console.log(`- ${integration.id} (${integration.name})`);
+    console.log(`- ${integration.manifest.id} (${integration.manifest.name})`);
   }
   console.log("");
-  console.log(`Run avis add <integration>, for example: avis add ${compatible[0]?.id}`);
+  console.log(
+    `Run avis add <integration>, for example: avis add ${compatible[0]?.manifest.id}`
+  );
   return undefined;
 }
 
@@ -250,7 +252,7 @@ async function runDoctor(): Promise<void> {
     }
 
     console.log("");
-    console.log(`${integration.name}: ${verification.status.toUpperCase()}`);
+    console.log(`${integration.manifest.name}: ${formatHealthLabel(verification.health)}`);
     console.log(formatVerification(verification));
   }
 }
@@ -277,7 +279,9 @@ function printList(): void {
   console.log("");
   console.log("Integrations:");
   for (const integration of registry.integrations) {
-    console.log(`- ${integration.id}: ${integration.name} (${integration.capability})`);
+    console.log(
+      `- ${integration.manifest.id}: ${integration.manifest.name} (${integration.manifest.capability})`
+    );
   }
 }
 
@@ -291,7 +295,7 @@ function printKnownCommands(): void {
   console.log("");
   console.log("Known integrations:");
   for (const integration of registry.integrations) {
-    console.log(`- ${integration.id}`);
+    console.log(`- ${integration.manifest.id}`);
   }
 }
 
@@ -300,7 +304,7 @@ function printSupportedTargets(integrationRegistry: IntegrationRegistry): void {
   console.log("Available integrations currently support:");
   for (const group of integrationRegistry.getSupportGroups()) {
     const integrations = group.integrations
-      .map((integration) => integration.id)
+      .map((integration) => integration.manifest.id)
       .join(", ");
     console.log(`- ${formatSupportGroupLabel(group)}: ${integrations}`);
   }
@@ -334,10 +338,33 @@ function formatVerification(result: VerificationResult): string {
     "Verification:",
     ...result.checks.map((check) => {
       const icon =
-        check.status === "pass" ? "OK" : check.status === "warning" ? "WARN" : "FAIL";
-      return `${icon} ${check.label}${check.message ? ` - ${check.message}` : ""}`;
+        check.status === "pass"
+          ? "OK"
+          : check.status === "warning"
+            ? "WARN"
+            : check.status === "skipped"
+              ? "SKIP"
+              : "FAIL";
+      const detail = check.message ? ` - ${check.message}` : "";
+      const remediation = check.remediation ? ` (${check.remediation})` : "";
+      return `${icon} ${check.label}${detail}${remediation}`;
     })
   ].join("\n");
+}
+
+function formatHealthLabel(health: VerificationResult["health"]): string {
+  switch (health) {
+    case "not-installed":
+      return "NOT INSTALLED";
+    case "healthy":
+      return "HEALTHY";
+    case "partial":
+      return "PARTIAL";
+    case "broken":
+      return "BROKEN";
+    case "unknown":
+      return "UNKNOWN";
+  }
 }
 
 async function confirm(question: string): Promise<boolean> {

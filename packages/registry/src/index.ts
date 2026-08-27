@@ -1,4 +1,5 @@
 import type {
+  AvisIntegrationManifest,
   AvisIntegration,
   Capability,
   CapabilityId,
@@ -11,17 +12,6 @@ export interface IntegrationSupportGroup {
   ecosystem: EcosystemId;
   framework?: FrameworkId;
   integrations: AvisIntegration[];
-}
-
-export interface IntegrationManifest {
-  id: string;
-  name: string;
-  capability: CapabilityId;
-  supports: {
-    ecosystems: EcosystemId[];
-    frameworks?: FrameworkId[];
-  };
-  description?: string;
 }
 
 export interface StackManifest {
@@ -53,7 +43,7 @@ export class IntegrationRegistry {
   }
 
   findIntegrationById(id: string): AvisIntegration | undefined {
-    return this.integrations.find((integration) => integration.id === id);
+    return this.integrations.find((integration) => integration.manifest.id === id);
   }
 
   findCompatibleIntegrations(context: ProjectContext): AvisIntegration[] {
@@ -67,7 +57,7 @@ export class IntegrationRegistry {
     context: ProjectContext
   ): AvisIntegration[] {
     return this.findCompatibleIntegrations(context).filter(
-      (integration) => integration.capability === capabilityId
+      (integration) => integration.manifest.capability === capabilityId
     );
   }
 
@@ -75,8 +65,8 @@ export class IntegrationRegistry {
     const groups = new Map<string, IntegrationSupportGroup>();
 
     for (const integration of this.integrations) {
-      for (const ecosystem of integration.supports.ecosystems) {
-        const frameworks = integration.supports.frameworks ?? [undefined];
+      for (const ecosystem of integration.manifest.supports.ecosystems) {
+        const frameworks = integration.manifest.supports.frameworks ?? [undefined];
 
         for (const framework of frameworks) {
           const key = `${ecosystem}:${framework ?? ""}`;
@@ -108,7 +98,7 @@ export function createIntegrationRegistry(options: {
 }
 
 export function validateIntegrationManifest(
-  manifest: IntegrationManifest
+  manifest: AvisIntegrationManifest
 ): ManifestValidationResult {
   const errors: string[] = [];
 
@@ -124,8 +114,27 @@ export function validateIntegrationManifest(
     errors.push("Integration capability is required.");
   }
 
+  if (!manifest.description.trim()) {
+    errors.push("Integration description is required.");
+  }
+
+  if (!manifest.version.trim()) {
+    errors.push("Integration version is required.");
+  }
+
+  if (!["experimental", "stable", "deprecated"].includes(manifest.status)) {
+    errors.push("Integration status is invalid.");
+  }
+
   if (manifest.supports.ecosystems.length === 0) {
     errors.push("Integration must support at least one ecosystem.");
+  }
+
+  if (
+    manifest.supports.packageManagers &&
+    manifest.supports.packageManagers.length === 0
+  ) {
+    errors.push("Integration package manager support cannot be empty when provided.");
   }
 
   return {

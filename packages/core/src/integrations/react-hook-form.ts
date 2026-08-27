@@ -10,12 +10,26 @@ import type { AvisIntegration, CompatibilityResult } from "./types.js";
 const packageName = "react-hook-form";
 
 export const reactHookFormIntegration: AvisIntegration = {
-  id: "react-hook-form",
-  name: "React Hook Form",
-  capability: "forms",
-  supports: {
-    ecosystems: [ecosystems.node],
-    frameworks: [frameworks.nextjs]
+  manifest: {
+    id: "react-hook-form",
+    name: "React Hook Form",
+    description: "Performant React form state and validation wiring.",
+    capability: "forms",
+    version: "1.0.0",
+    status: "stable",
+    supports: {
+      ecosystems: [ecosystems.node],
+      frameworks: [frameworks.nextjs],
+      packageManagers: [
+        packageManagers.npm,
+        packageManagers.pnpm,
+        packageManagers.yarn,
+        packageManagers.bun
+      ]
+    },
+    dependencies: [{ name: packageName, type: "runtime" }],
+    configures: ["runtime dependency", "starter form component"],
+    source: { owner: "avis" }
   },
   isCompatible: isReactHookFormCompatible,
   plan: async ({ context }): Promise<ChangePlan> => {
@@ -125,23 +139,27 @@ async function verifyReactHookForm(context: ProjectContext): Promise<Verificatio
     {
       id: "react-hook-form-dependency",
       label: "dependency installed",
-      status: dependencyInstalled ? "pass" : "fail",
+      status: dependencyInstalled ? "pass" : "skipped",
       message: dependencyInstalled
         ? undefined
-        : "react-hook-form is missing from package.json."
+        : "react-hook-form is not installed.",
+      remediation: dependencyInstalled ? undefined : "Run avis add react-hook-form."
     },
     {
       id: "react-hook-form-component",
       label: "example form detected",
-      status: componentExists ? "pass" : "warning",
-      message: componentExists ? undefined : `${componentPath} was not found.`
+      status: componentExists ? "pass" : dependencyInstalled ? "warning" : "skipped",
+      message: componentExists ? undefined : `${componentPath} was not found.`,
+      remediation: componentExists
+        ? undefined
+        : "Run avis add react-hook-form to create a starter form component."
     }
   ] as const;
-  const hasFailure = checks.some((check) => check.status === "fail");
   const hasWarning = checks.some((check) => check.status === "warning");
 
   return {
-    status: hasFailure ? "fail" : hasWarning ? "warning" : "pass",
+    integrationId: "react-hook-form",
+    health: dependencyInstalled ? (hasWarning ? "partial" : "healthy") : "not-installed",
     checks: [...checks],
     diagnostics: []
   };

@@ -11,12 +11,21 @@ const packageName = "djangorestframework";
 const settingsApp = "rest_framework";
 
 export const djangoRestFrameworkIntegration: AvisIntegration = {
-  id: "django-rest-framework",
-  name: "Django REST Framework",
-  capability: "api",
-  supports: {
-    ecosystems: [ecosystems.python],
-    frameworks: [frameworks.django]
+  manifest: {
+    id: "django-rest-framework",
+    name: "Django REST Framework",
+    description: "API toolkit for Django projects.",
+    capability: "api",
+    version: "1.0.0",
+    status: "stable",
+    supports: {
+      ecosystems: [ecosystems.python],
+      frameworks: [frameworks.django],
+      packageManagers: [packageManagers.pip, packageManagers.uv, packageManagers.poetry]
+    },
+    dependencies: [{ name: packageName, type: "runtime" }],
+    configures: ["runtime dependency", "rest_framework installed app"],
+    source: { owner: "avis" }
   },
   isCompatible: isDjangoRestFrameworkCompatible,
   plan: async ({ context }): Promise<ChangePlan> => {
@@ -139,25 +148,31 @@ async function verifyDjangoRestFramework(
     {
       id: "drf-dependency",
       label: "dependency installed",
-      status: dependencyInstalled ? "pass" : "fail",
-      message: dependencyInstalled ? undefined : `${packageName} is missing.`
+      status: dependencyInstalled ? "pass" : "skipped",
+      message: dependencyInstalled ? undefined : `${packageName} is not installed.`,
+      remediation: dependencyInstalled
+        ? undefined
+        : "Run avis add django-rest-framework."
     },
     {
       id: "drf-installed-app",
       label: "rest_framework configured",
-      status: settingsConfigured ? "pass" : "warning",
+      status: settingsConfigured ? "pass" : dependencyInstalled ? "warning" : "skipped",
       message: settingsConfigured
         ? undefined
         : settingsPath
           ? `${settingsPath} does not include ${settingsApp}.`
-          : "Django settings.py was not found."
+          : "Django settings.py was not found.",
+      remediation: settingsConfigured
+        ? undefined
+        : "Run avis add django-rest-framework to configure INSTALLED_APPS."
     }
   ] as const;
-  const hasFailure = checks.some((check) => check.status === "fail");
   const hasWarning = checks.some((check) => check.status === "warning");
 
   return {
-    status: hasFailure ? "fail" : hasWarning ? "warning" : "pass",
+    integrationId: "django-rest-framework",
+    health: dependencyInstalled ? (hasWarning ? "partial" : "healthy") : "not-installed",
     checks: [...checks],
     diagnostics: []
   };

@@ -46,6 +46,28 @@ describe("tanstackQueryIntegration", () => {
     expect(plan.operations).toEqual([]);
   });
 
+  it("reports partial health when the package is installed but provider is missing", async () => {
+    const root = await createNextProject({
+      dependencies: {
+        "@tanstack/react-query": "5.0.0",
+        next: "14.2.0",
+        react: "18.3.1"
+      },
+      devDependencies: {
+        typescript: "5.4.5"
+      }
+    });
+
+    const context = createProjectContext(await detectNodeProject(root));
+    const verification = await tanstackQueryIntegration.verify?.(context);
+
+    expect(verification?.health).toBe("partial");
+    expect(verification?.checks.map((check) => check.status)).toEqual([
+      "pass",
+      "warning"
+    ]);
+  });
+
   it("can apply file changes and verify the local setup", async () => {
     const root = await createNextProject({
       dependencies: {
@@ -67,7 +89,7 @@ describe("tanstackQueryIntegration", () => {
     const verification = await tanstackQueryIntegration.verify?.(context);
 
     expect(secondPlan.operations).toEqual([]);
-    expect(verification?.status).toBe("pass");
+    expect(verification?.health).toBe("healthy");
   });
 });
 

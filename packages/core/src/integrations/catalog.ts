@@ -43,7 +43,7 @@ export const builtInIntegrations: AvisIntegration[] = [
 ];
 
 export function findIntegrationById(id: string): AvisIntegration | undefined {
-  return builtInIntegrations.find((integration) => integration.id === id);
+  return builtInIntegrations.find((integration) => integration.manifest.id === id);
 }
 
 export function findCapabilityById(id: string): Capability | undefined {
@@ -56,7 +56,7 @@ export function findCompatibleIntegrationsForCapability(
 ): AvisIntegration[] {
   return builtInIntegrations.filter(
     (integration) =>
-      integration.capability === capabilityId &&
+      integration.manifest.capability === capabilityId &&
       integration.isCompatible(context).supported
   );
 }

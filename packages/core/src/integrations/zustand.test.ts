@@ -45,7 +45,27 @@ describe("zustandIntegration", () => {
     expect(plan.operations).toEqual([]);
   });
 
-  it("can apply file changes and verify the partial local setup", async () => {
+  it("reports not-installed before Avis applies the integration", async () => {
+    const root = await createNextProject({
+      dependencies: {
+        next: "16.0.0"
+      },
+      devDependencies: {
+        typescript: "7.0.0"
+      }
+    });
+
+    const context = createProjectContext(await detectNodeProject(root));
+    const verification = await zustandIntegration.verify?.(context);
+
+    expect(verification?.health).toBe("not-installed");
+    expect(verification?.checks.map((check) => check.status)).toEqual([
+      "skipped",
+      "skipped"
+    ]);
+  });
+
+  it("can apply file changes and verify the local setup", async () => {
     const root = await createNextProject({
       dependencies: {
         next: "16.0.0",
@@ -65,7 +85,7 @@ describe("zustandIntegration", () => {
     const verification = await zustandIntegration.verify?.(context);
 
     expect(secondPlan.operations).toEqual([]);
-    expect(verification?.status).toBe("pass");
+    expect(verification?.health).toBe("healthy");
   });
 });
 

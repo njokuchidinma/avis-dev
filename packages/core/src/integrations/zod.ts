@@ -10,12 +10,26 @@ import type { AvisIntegration, CompatibilityResult } from "./types.js";
 const packageName = "zod";
 
 export const zodIntegration: AvisIntegration = {
-  id: "zod",
-  name: "Zod",
-  capability: "validation",
-  supports: {
-    ecosystems: [ecosystems.node],
-    frameworks: [frameworks.nextjs]
+  manifest: {
+    id: "zod",
+    name: "Zod",
+    description: "Runtime schema validation and static type inference for TypeScript applications.",
+    capability: "validation",
+    version: "1.0.0",
+    status: "stable",
+    supports: {
+      ecosystems: [ecosystems.node],
+      frameworks: [frameworks.nextjs],
+      packageManagers: [
+        packageManagers.npm,
+        packageManagers.pnpm,
+        packageManagers.yarn,
+        packageManagers.bun
+      ]
+    },
+    dependencies: [{ name: packageName, type: "runtime" }],
+    configures: ["runtime dependency", "starter schema module"],
+    source: { owner: "avis" }
   },
   isCompatible: isZodCompatible,
   plan: async ({ context }): Promise<ChangePlan> => {
@@ -125,21 +139,23 @@ async function verifyZod(context: ProjectContext): Promise<VerificationResult> {
     {
       id: "zod-dependency",
       label: "dependency installed",
-      status: dependencyInstalled ? "pass" : "fail",
-      message: dependencyInstalled ? undefined : "zod is missing from package.json."
+      status: dependencyInstalled ? "pass" : "skipped",
+      message: dependencyInstalled ? undefined : "zod is not installed.",
+      remediation: dependencyInstalled ? undefined : "Run avis add zod."
     },
     {
       id: "zod-schema",
       label: "schema detected",
-      status: schemaExists ? "pass" : "warning",
-      message: schemaExists ? undefined : `${schemaPath} was not found.`
+      status: schemaExists ? "pass" : dependencyInstalled ? "warning" : "skipped",
+      message: schemaExists ? undefined : `${schemaPath} was not found.`,
+      remediation: schemaExists ? undefined : "Run avis add zod to create a starter schema."
     }
   ] as const;
-  const hasFailure = checks.some((check) => check.status === "fail");
   const hasWarning = checks.some((check) => check.status === "warning");
 
   return {
-    status: hasFailure ? "fail" : hasWarning ? "warning" : "pass",
+    integrationId: "zod",
+    health: dependencyInstalled ? (hasWarning ? "partial" : "healthy") : "not-installed",
     checks: [...checks],
     diagnostics: []
   };

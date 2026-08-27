@@ -53,7 +53,7 @@ describe("djangoRestFrameworkIntegration", () => {
 
     expect(settings).toContain('"rest_framework"');
     expect(secondPlan.operations).toEqual([]);
-    expect(verification?.status).toBe("pass");
+    expect(verification?.health).toBe("healthy");
   });
 });
 
