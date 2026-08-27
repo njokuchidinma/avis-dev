@@ -228,10 +228,17 @@ importers:
       '@avis/core':
         specifier: workspace:*
         version: link:../core
+      '@avis/registry':
+        specifier: workspace:*
+        version: link:../registry
 
   packages/core: {}
 
-  packages/registry: {}
+  packages/registry:
+    dependencies:
+      '@avis/core':
+        specifier: workspace:*
+        version: link:../core
 
 packages:
 

@@ -1,7 +1,9 @@
 import { djangoRestFrameworkIntegration } from "./django-rest-framework.js";
 import type { ProjectContext } from "../types/project-context.js";
+import { reactHookFormIntegration } from "./react-hook-form.js";
 import { tanstackQueryIntegration } from "./tanstack-query.js";
 import type { AvisIntegration, Capability } from "./types.js";
+import { zodIntegration } from "./zod.js";
 import { zustandIntegration } from "./zustand.js";
 
 export const builtInCapabilities: Capability[] = [
@@ -19,13 +21,25 @@ export const builtInCapabilities: Capability[] = [
     id: "api",
     name: "API",
     description: "API framework extensions and tooling."
+  },
+  {
+    id: "forms",
+    name: "Forms",
+    description: "Form state and submission helpers."
+  },
+  {
+    id: "validation",
+    name: "Validation",
+    description: "Runtime schema validation."
   }
 ];
 
 export const builtInIntegrations: AvisIntegration[] = [
   zustandIntegration,
   tanstackQueryIntegration,
-  djangoRestFrameworkIntegration
+  djangoRestFrameworkIntegration,
+  reactHookFormIntegration,
+  zodIntegration
 ];
 
 export function findIntegrationById(id: string): AvisIntegration | undefined {

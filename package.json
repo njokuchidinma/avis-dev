@@ -8,10 +8,11 @@
     "avis": "node packages/cli/dist/index.js",
     "build": "pnpm -r build",
     "test:manual:drf": "bash scripts/manual-drf-test.sh",
+    "test:manual:next": "bash scripts/manual-next-addon-test.sh",
     "test:manual:query": "bash scripts/manual-query-test.sh",
     "test:manual:zustand": "bash scripts/manual-zustand-test.sh",
     "typecheck": "pnpm -r typecheck",
-    "test": "pnpm --filter @avis/core test"
+    "test": "pnpm -r --if-present test"
   },
   "keywords": [],
   "author": "",

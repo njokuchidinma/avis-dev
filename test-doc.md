@@ -364,3 +364,95 @@ python -m pip install djangorestframework
 ```
 
 This requires network access unless the package is already available locally.
+
+## Test 4: Additional Next.js V1 Integrations
+
+This test covers the broader V1 Next.js integrations added after the first slices:
+
+- `zod` for validation
+- `react-hook-form` for forms
+
+### Zod
+
+Create a fixture that already lists Zod:
+
+```bash
+CI=true pnpm test:manual:next -- zod installed
+```
+
+Run Avis:
+
+```bash
+CI=true pnpm test:manual:next -- zod apply
+```
+
+Answer `y`.
+
+Expected result includes:
+
+```text
+OK Created src/schemas/index.ts.
+
+Verification:
+OK dependency installed
+OK schema detected
+```
+
+Rerun for idempotence:
+
+```bash
+CI=true pnpm test:manual:next -- zod apply
+```
+
+Run doctor:
+
+```bash
+CI=true pnpm test:manual:next -- zod doctor
+```
+
+### React Hook Form
+
+Create a fixture that already lists React Hook Form:
+
+```bash
+CI=true pnpm test:manual:next -- react-hook-form installed
+```
+
+Run Avis:
+
+```bash
+CI=true pnpm test:manual:next -- react-hook-form apply
+```
+
+Answer `y`.
+
+Expected result includes:
+
+```text
+OK Created src/components/example-form.tsx.
+
+Verification:
+OK dependency installed
+OK example form detected
+```
+
+Rerun for idempotence:
+
+```bash
+CI=true pnpm test:manual:next -- react-hook-form apply
+```
+
+Run doctor:
+
+```bash
+CI=true pnpm test:manual:next -- react-hook-form doctor
+```
+
+### Capability Routing
+
+Inside a Next.js fixture, these should route to the single compatible integration for now:
+
+```bash
+node /Users/chidinmanjoku/Work/startups/avis-dev/packages/cli/dist/index.js add validation
+node /Users/chidinmanjoku/Work/startups/avis-dev/packages/cli/dist/index.js add forms
+```

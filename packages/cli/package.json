@@ -18,7 +18,8 @@
     "dist"
   ],
   "dependencies": {
-    "@avis/core": "workspace:*"
+    "@avis/core": "workspace:*",
+    "@avis/registry": "workspace:*"
   },
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
