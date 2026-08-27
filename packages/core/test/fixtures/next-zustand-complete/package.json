@@ -1,0 +1,13 @@
+{
+  "name": "next-zustand-complete",
+  "packageManager": "pnpm@11.24.0",
+  "dependencies": {
+    "next": "14.2.0",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "zustand": "5.0.0"
+  },
+  "devDependencies": {
+    "typescript": "5.4.5"
+  }
+}

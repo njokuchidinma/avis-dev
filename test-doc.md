@@ -36,10 +36,47 @@ Useful development shims from the Avis repo root:
 ```bash
 CI=true pnpm avis --
 CI=true pnpm avis -- list
+CI=true pnpm avis -- show zustand
+CI=true pnpm avis -- show state-management
 CI=true pnpm avis -- doctor
 ```
 
 `pnpm avis -- <args>` runs the built CLI directly.
+
+## Metadata Inspection
+
+`avis show` reads integration manifests and does not need to run inside a supported target project.
+
+Show one integration:
+
+```bash
+CI=true pnpm avis -- show tanstack-query
+```
+
+Expected output includes:
+
+```text
+TanStack Query
+Identity
+- ID: tanstack-query
+- Capability: data-fetching
+Supports
+Avis Configures
+```
+
+Show a capability:
+
+```bash
+CI=true pnpm avis -- show state-management
+```
+
+Expected output includes:
+
+```text
+State Management
+Integrations:
+- zustand: Zustand
+```
 
 ## Doctor Health States
 
@@ -52,6 +89,18 @@ CI=true pnpm avis -- doctor
 - `UNKNOWN`: Avis could not determine health safely.
 
 This distinction matters: a compatible integration that has not been added yet should not be treated as broken.
+
+## Core v1 Exit Checklist
+
+Core v1 is considered complete when these checks pass:
+
+- `avis list` shows built-in capabilities and integrations.
+- `avis show <integration>` prints manifest metadata.
+- `avis show <capability>` lists matching integrations.
+- `avis doctor` reports health states, not just pass/fail checks.
+- `avis add <integration>` remains preview-first and idempotent.
+- Fixture tests cover clean, partial, complete, and repeated-run scenarios.
+- Avis state ownership is documented in `docs/avis-state-model.md`.
 
 ## Test 1: Next.js + Zustand First Slice
 

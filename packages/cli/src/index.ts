@@ -26,6 +26,11 @@ const registry = createIntegrationRegistry({
   integrations: builtInIntegrations
 });
 
+interface DoctorEntry {
+  integration: AvisIntegration;
+  verification: VerificationResult;
+}
+
 export async function runCli(argv = process.argv.slice(2)): Promise<void> {
   const args = argv[0] === "--" ? argv.slice(1) : argv;
   const [command, subject] = args;
@@ -47,6 +52,17 @@ export async function runCli(argv = process.argv.slice(2)): Promise<void> {
 
   if (command === "list") {
     printList();
+    return;
+  }
+
+  if (command === "show" && subject) {
+    printShow(subject);
+    return;
+  }
+
+  if (command === "show") {
+    console.error("Usage: avis show <integration|capability>");
+    process.exitCode = 1;
     return;
   }
 
@@ -245,15 +261,34 @@ async function runDoctor(): Promise<void> {
     return;
   }
 
+  const entries: DoctorEntry[] = [];
+
   for (const integration of compatibleIntegrations) {
     const verification = await integration.verify?.(context);
     if (!verification) {
       continue;
     }
 
+    entries.push({ integration, verification });
+  }
+
+  console.log("");
+  console.log(formatDoctorSummary(entries));
+
+  for (const health of doctorHealthOrder) {
+    const group = entries.filter((entry) => entry.verification.health === health);
+    if (group.length === 0) {
+      continue;
+    }
+
     console.log("");
-    console.log(`${integration.manifest.name}: ${formatHealthLabel(verification.health)}`);
-    console.log(formatVerification(verification));
+    console.log(formatHealthLabel(health));
+
+    for (const entry of group) {
+      console.log("");
+      console.log(entry.integration.manifest.name);
+      console.log(formatVerification(entry.verification));
+    }
   }
 }
 
@@ -266,6 +301,7 @@ Usage:
   avis add <capability>
   avis add zustand
   avis list
+  avis show <integration|capability>
   avis doctor
 `);
 }
@@ -282,6 +318,90 @@ function printList(): void {
     console.log(
       `- ${integration.manifest.id}: ${integration.manifest.name} (${integration.manifest.capability})`
     );
+  }
+}
+
+function printShow(subject: string): void {
+  const integration = registry.findIntegrationById(subject);
+  if (integration) {
+    printIntegrationDetails(integration);
+    return;
+  }
+
+  const capability = registry.findCapabilityById(subject);
+  if (capability) {
+    const integrations = registry.integrations.filter(
+      (candidate) => candidate.manifest.capability === capability.id
+    );
+
+    console.log(capability.name);
+    if (capability.description) {
+      console.log(capability.description);
+    }
+
+    console.log("");
+    console.log("Integrations:");
+    if (integrations.length === 0) {
+      console.log("- none");
+      return;
+    }
+
+    for (const candidate of integrations) {
+      console.log(
+        `- ${candidate.manifest.id}: ${candidate.manifest.name} (${formatStatusLabel(candidate.manifest.status)})`
+      );
+    }
+    return;
+  }
+
+  console.error(`Unknown integration or capability: ${subject}`);
+  printKnownCommands();
+  process.exitCode = 1;
+}
+
+function printIntegrationDetails(integration: AvisIntegration): void {
+  const manifest = integration.manifest;
+
+  console.log(manifest.name);
+  console.log(manifest.description);
+  console.log("");
+  console.log("Identity");
+  console.log(`- ID: ${manifest.id}`);
+  console.log(`- Capability: ${manifest.capability}`);
+  console.log(`- Version: ${manifest.version}`);
+  console.log(`- Status: ${formatStatusLabel(manifest.status)}`);
+  console.log("");
+  console.log("Supports");
+  console.log(`- Ecosystems: ${formatList(manifest.supports.ecosystems)}`);
+  console.log(`- Frameworks: ${formatList(manifest.supports.frameworks)}`);
+  console.log(`- Package managers: ${formatList(manifest.supports.packageManagers)}`);
+
+  if (manifest.dependencies && manifest.dependencies.length > 0) {
+    console.log("");
+    console.log("Dependencies");
+    for (const dependency of manifest.dependencies) {
+      const optional = dependency.optional ? ", optional" : "";
+      console.log(`- ${dependency.name} (${dependency.type}${optional})`);
+    }
+  }
+
+  if (manifest.configures && manifest.configures.length > 0) {
+    console.log("");
+    console.log("Avis Configures");
+    for (const configuredItem of manifest.configures) {
+      console.log(`- ${configuredItem}`);
+    }
+  }
+
+  if (manifest.documentation?.homepage || manifest.documentation?.quickstart) {
+    console.log("");
+    console.log("Documentation");
+    if (manifest.documentation.homepage) {
+      console.log(`- Homepage: ${manifest.documentation.homepage}`);
+    }
+    if (manifest.documentation.quickstart) {
+      console.log(`- Quickstart: ${manifest.documentation.quickstart}`);
+    }
   }
 }
 
@@ -320,6 +440,21 @@ function formatDetectedProject(context: ProjectContext): string {
   ].join("\n");
 }
 
+function formatList(values: readonly string[] | undefined): string {
+  return values && values.length > 0 ? values.join(", ") : "any";
+}
+
+function formatStatusLabel(status: AvisIntegration["manifest"]["status"]): string {
+  switch (status) {
+    case "experimental":
+      return "Experimental";
+    case "stable":
+      return "Stable";
+    case "deprecated":
+      return "Deprecated";
+  }
+}
+
 async function printVerification(
   integration: AvisIntegration,
   context: ProjectContext
@@ -350,6 +485,31 @@ function formatVerification(result: VerificationResult): string {
       return `${icon} ${check.label}${detail}${remediation}`;
     })
   ].join("\n");
+}
+
+const doctorHealthOrder: VerificationResult["health"][] = [
+  "broken",
+  "partial",
+  "unknown",
+  "healthy",
+  "not-installed"
+];
+
+function formatDoctorSummary(entries: DoctorEntry[]): string {
+  const counts = new Map<VerificationResult["health"], number>();
+  for (const entry of entries) {
+    const currentCount = counts.get(entry.verification.health) ?? 0;
+    counts.set(entry.verification.health, currentCount + 1);
+  }
+
+  const parts = doctorHealthOrder
+    .map((health) => {
+      const count = counts.get(health) ?? 0;
+      return count > 0 ? `${formatHealthLabel(health).toLowerCase()}: ${count}` : undefined;
+    })
+    .filter((part): part is string => part !== undefined);
+
+  return `Summary: ${parts.length > 0 ? parts.join(", ") : "no integrations checked"}`;
 }
 
 function formatHealthLabel(health: VerificationResult["health"]): string {
