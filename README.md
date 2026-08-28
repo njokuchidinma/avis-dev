@@ -7,7 +7,9 @@ Avis is a source-available, ecosystem-agnostic CLI that safely adds, configures,
 Framework scaffolders create the project. Avis equips it.
 
 ```txt
-$ avis add zustand
+$ npm install -g avis-dev@alpha
+$ cd my-next-app
+$ avis add state-management
 
 Detected:
 Framework: nextjs
@@ -50,7 +52,7 @@ Then run `avis` inside any supported project:
 ```sh
 cd my-next-app
 avis doctor
-avis add zustand
+avis add state-management
 ```
 
 Avis itself is not an application dependency. Do not add Avis to `requirements.txt`, `pyproject.toml`, `composer.json`, `pubspec.yaml`, `Cargo.toml`, or equivalent project dependency files.
@@ -78,7 +80,7 @@ node path/to/avis-dev/packages/cli/dist/index.js
 
 ```sh
 cd my-next-app
-avis add zustand
+avis add state-management
 avis doctor
 ```
 
@@ -114,6 +116,8 @@ existing project
 ## ChangePlan Safety Model
 
 Before Avis changes a project, integrations generate a ChangePlan. Avis validates the plan and displays the dependency, file, configuration, or environment operations before asking for confirmation.
+
+For example, `avis add state-management` currently resolves to Zustand in compatible Next.js projects because Zustand is the only built-in state-management integration today. The public workflow stays capability-first while integration pages document the concrete tool Avis selects.
 
 ## Avis Doctor
 

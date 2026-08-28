@@ -29,7 +29,7 @@ avis
 
 Avis detects the project and prints compatible capabilities.
 
-## 4. Add an Integration
+## 4. Add a Capability
 
 Add a capability:
 
@@ -37,7 +37,9 @@ Add a capability:
 avis add state-management
 ```
 
-If more than one integration is compatible, Avis lists them and asks you to run a concrete integration command. Current Next.js state management support maps to:
+In the current Next.js alpha, state management resolves to Zustand because it is the only built-in compatible state-management integration.
+
+If more than one integration is compatible for a capability, Avis lists them and asks you to run a concrete integration command:
 
 ```sh
 avis add zustand

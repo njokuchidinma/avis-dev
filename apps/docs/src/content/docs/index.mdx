@@ -21,6 +21,8 @@ Avis is a source-available, ecosystem-agnostic CLI that safely adds, configures,
 Framework scaffolders create the project. Avis equips it.
 
 ```txt
+$ npm install -g avis-dev@alpha
+$ cd my-next-app
 $ avis add state-management
 
 Detected:
@@ -28,13 +30,6 @@ Framework: nextjs
 Language: typescript
 Ecosystem: node
 Package manager: pnpm
-
-State Management integrations:
-- zustand (Zustand)
-
-Run avis add &lt;integration&gt;, for example: avis add zustand
-
-$ avis add zustand
 
 Avis will make these changes:
 
@@ -57,6 +52,8 @@ OK store detected
 After `create-next-app`, `django-admin startproject`, `rails new`, `cargo new`, `dotnet new`, or another framework initializer, developers still repeat the same setup work: state management, data fetching, forms, validation, API tooling, testing, monitoring, storage, background jobs, and more.
 
 Avis starts after project initialization. It detects the project you already have, recommends compatible integrations, previews a ChangePlan, asks before applying changes, and then verifies the result.
+
+The public path is capability-first. In the current Next.js alpha, `avis add state-management` resolves to Zustand because it is the only built-in compatible state-management integration.
 
 ## How Avis Works
 
@@ -96,7 +93,7 @@ Avis is currently in active development. Review ChangePlans before applying chan
 
 ## Contribute
 
-Avis is designed to become community-extensible. Start with [Repository Architecture](/contributing/repository-architecture/), then read [Creating an Integration](/contributing/creating-an-integration/) and [Integration Requirements](/contributing/integration-requirements/).
+Avis is designed to become community-extensible, but it is not ready for broad external code contributions yet. Contributor docs are included so the project can open up cleanly when the foundation is stable.
 
 ## Equip Your Next Project
 

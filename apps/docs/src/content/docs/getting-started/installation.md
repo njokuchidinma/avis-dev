@@ -42,7 +42,7 @@ After installation, enter an existing project:
 ```sh
 cd my-next-app
 avis doctor
-avis add zustand
+avis add state-management
 ```
 
 Or:

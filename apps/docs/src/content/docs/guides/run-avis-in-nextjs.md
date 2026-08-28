@@ -13,7 +13,7 @@ avis
 Add a supported integration:
 
 ```sh
-avis add zustand
+avis add state-management
 ```
 
 Review the ChangePlan, confirm only if the changes are expected, then verify:
