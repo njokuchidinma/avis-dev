@@ -7,19 +7,19 @@ Start from an existing Next.js project created with your normal scaffold command
 
 ```sh
 cd my-next-app
-node path/to/avis-dev/packages/cli/dist/index.js
+avis
 ```
 
 Add a supported integration:
 
 ```sh
-node path/to/avis-dev/packages/cli/dist/index.js add zustand
+avis add zustand
 ```
 
 Review the ChangePlan, confirm only if the changes are expected, then verify:
 
 ```sh
-node path/to/avis-dev/packages/cli/dist/index.js doctor
+avis doctor
 ```
 
 Current Next.js integrations:

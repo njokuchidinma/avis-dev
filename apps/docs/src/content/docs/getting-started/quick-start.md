@@ -3,15 +3,15 @@ title: Quick Start
 description: Use Avis in an existing project in a few minutes.
 ---
 
-This quick start assumes you are using the local development build of Avis.
+This quick start assumes the npm alpha package is installed.
 
-## 1. Build Avis
+## 1. Install Avis
 
 ```sh
-cd avis-dev
-pnpm install
-pnpm build
+npm install -g avis-dev@alpha
 ```
+
+Avis is installed on your machine, not into the target application.
 
 ## 2. Enter an Existing Project
 
@@ -24,7 +24,7 @@ cd my-next-app
 ## 3. Run Avis
 
 ```sh
-node path/to/avis-dev/packages/cli/dist/index.js
+avis
 ```
 
 Avis detects the project and prints compatible capabilities.
@@ -34,13 +34,13 @@ Avis detects the project and prints compatible capabilities.
 Add a capability:
 
 ```sh
-node path/to/avis-dev/packages/cli/dist/index.js add state-management
+avis add state-management
 ```
 
 If more than one integration is compatible, Avis lists them and asks you to run a concrete integration command. Current Next.js state management support maps to:
 
 ```sh
-node path/to/avis-dev/packages/cli/dist/index.js add zustand
+avis add zustand
 ```
 
 ## 5. Review the ChangePlan
@@ -69,7 +69,19 @@ Apply changes?
 Run:
 
 ```sh
-node path/to/avis-dev/packages/cli/dist/index.js doctor
+avis doctor
 ```
 
 `avis doctor` checks project state and reports whether supported integrations are healthy, partially configured, not installed, broken, or unknown.
+
+## Local Development Alternative
+
+If you are working from source before using the npm package:
+
+```sh
+cd avis-dev
+pnpm install
+pnpm build
+cd path/to/my-next-app
+node path/to/avis-dev/packages/cli/dist/index.js doctor
+```

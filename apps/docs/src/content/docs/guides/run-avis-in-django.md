@@ -7,19 +7,21 @@ Start from an existing Django project.
 
 ```sh
 cd my-django-project
-node path/to/avis-dev/packages/cli/dist/index.js
+avis
 ```
 
 Add Django REST Framework:
 
 ```sh
-node path/to/avis-dev/packages/cli/dist/index.js add django-rest-framework
+avis add django-rest-framework
 ```
 
-Review the ChangePlan before confirming. Avis may install `djangorestframework` and patch the detected Django settings module to include `rest_framework`.
+Review the ChangePlan before confirming. Avis may install `djangorestframework` using the detected Python package manager and patch the detected Django settings module to include `rest_framework`.
 
 Verify:
 
 ```sh
-node path/to/avis-dev/packages/cli/dist/index.js doctor
+avis doctor
 ```
+
+Avis itself should not be added to `requirements.txt`, `pyproject.toml`, or the Django virtual environment as an application dependency.

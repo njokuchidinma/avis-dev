@@ -21,6 +21,8 @@ Avis recognizes a Next.js project through:
 - yarn
 - bun
 
+Avis uses the detected Node package manager for Next.js project dependencies.
+
 ## Supported Capabilities
 
 - state management

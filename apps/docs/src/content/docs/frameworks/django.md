@@ -19,6 +19,8 @@ Avis recognizes a Django project through:
 - uv
 - Poetry
 
+Avis uses the detected Python package manager for Django project dependencies. Avis itself should not be added to `requirements.txt`, `pyproject.toml`, or the Django virtual environment.
+
 ## Supported Capabilities
 
 - API tooling

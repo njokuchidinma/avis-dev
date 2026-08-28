@@ -39,7 +39,25 @@ Avis detects the project you already have, recommends compatible integrations, p
 
 ## Installation
 
-Avis is currently in active development and is not documented here as a published global package yet.
+Install Avis once on your machine:
+
+```sh
+npm install -g avis-dev@alpha
+```
+
+Then run `avis` inside any supported project:
+
+```sh
+cd my-next-app
+avis doctor
+avis add zustand
+```
+
+Avis itself is not an application dependency. Do not add Avis to `requirements.txt`, `pyproject.toml`, `composer.json`, `pubspec.yaml`, `Cargo.toml`, or equivalent project dependency files.
+
+During alpha, npm is the distribution channel for the Avis CLI. When Avis operates inside a project, it uses that project's native package manager.
+
+## Local Development
 
 Local development flow:
 
@@ -60,8 +78,8 @@ node path/to/avis-dev/packages/cli/dist/index.js
 
 ```sh
 cd my-next-app
-node path/to/avis-dev/packages/cli/dist/index.js add zustand
-node path/to/avis-dev/packages/cli/dist/index.js doctor
+avis add zustand
+avis doctor
 ```
 
 Review the ChangePlan before confirming.
@@ -114,9 +132,9 @@ pnpm docs:build
 
 ## Contributing
 
-New official integrations should include implementation, verification, tests, and documentation.
+Avis is not ready for broad external code contributions yet. Issues, feedback, and early adopter reports are welcome once the project owner opens the relevant GitHub channels.
 
-Start with the docs in `apps/docs/src/content/docs/contributing`.
+The repository includes contributor-oriented docs so the project can open up cleanly later. New official integrations should eventually include implementation, verification, tests, and documentation.
 
 ## Project Status
 
@@ -124,4 +142,4 @@ Avis is alpha software in active development. Use it inside projects tracked wit
 
 ## License
 
-This repository is currently marked `UNLICENSED`.
+Avis is source-available under the PolyForm Noncommercial License 1.0.0. You may inspect, use, modify, and share the software for noncommercial purposes under the license terms. Commercial use, resale, paid redistribution, or selling Avis as a product requires a separate commercial license from the project owner.

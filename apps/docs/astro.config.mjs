@@ -52,6 +52,7 @@ export default defineConfig({
 						{ label: 'Installation', slug: 'getting-started/installation' },
 						{ label: 'Quick Start', slug: 'getting-started/quick-start' },
 						{ label: 'Supported Projects', slug: 'getting-started/supported-projects' },
+						{ label: 'License', slug: 'getting-started/license' },
 					],
 				},
 				{

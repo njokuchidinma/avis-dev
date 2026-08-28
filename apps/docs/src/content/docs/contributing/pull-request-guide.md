@@ -5,6 +5,7 @@ description: Expectations for Avis pull requests.
 
 Before opening a pull request:
 
+- confirm the project is currently accepting external contributions
 - keep changes focused
 - add or update tests for behavior changes
 - update docs for user-facing behavior

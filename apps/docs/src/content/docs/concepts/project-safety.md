@@ -16,6 +16,7 @@ Current protections:
 
 Current expectations:
 
+- install Avis as a machine-level CLI, not as an application dependency
 - use Avis in a repository tracked with version control
 - review the ChangePlan before confirming
 - inspect generated starter code before building on it
