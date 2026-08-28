@@ -1,25 +1,58 @@
 {
   "name": "avis-dev",
-  "version": "0.0.0",
+  "version": "0.1.0-alpha.1",
   "description": "Avis is an ecosystem-agnostic CLI for safely adding development capabilities to existing projects.",
-  "private": true,
-  "license": "UNLICENSED",
-  "scripts": {
-    "build": "pnpm -r build",
-    "typecheck": "pnpm -r typecheck",
-    "test": "pnpm --filter @avis/core test"
-  },
-  "keywords": [],
-  "author": "",
-  "devEngines": {
-    "packageManager": {
-      "name": "pnpm",
-      "version": "11.24.0",
-      "onFail": "download"
-    }
-  },
-  "packageManager": "pnpm@11.24.0",
+  "license": "PolyForm-Noncommercial-1.0.0",
   "type": "module",
+  "bin": {
+    "avis": "dist/index.js"
+  },
+  "files": [
+    "dist",
+    "LICENSE.md",
+    "NOTICE.md"
+  ],
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "homepage": "https://njokuchidinma.github.io/avis-dev",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/njokuchidinma/avis-dev.git"
+  },
+  "bugs": {
+    "url": "https://github.com/njokuchidinma/avis-dev/issues"
+  },
+  "publishConfig": {
+    "access": "public",
+    "tag": "alpha"
+  },
+  "scripts": {
+    "avis": "node packages/cli/dist/index.js",
+    "build": "pnpm build:package && pnpm -r build",
+    "build:package": "tsup packages/cli/src/index.ts --format esm --platform node --target node20 --no-splitting --sourcemap --clean --out-dir dist",
+    "docs:build": "pnpm --filter @avis/docs build",
+    "docs:dev": "pnpm --filter @avis/docs dev",
+    "docs:preview": "pnpm --filter @avis/docs preview",
+    "pack:dry-run": "npm pack --dry-run",
+    "prepack": "pnpm build:package",
+    "test:manual:drf": "bash scripts/manual-drf-test.sh",
+    "test:manual:next": "bash scripts/manual-next-addon-test.sh",
+    "test:manual:query": "bash scripts/manual-query-test.sh",
+    "test:manual:zustand": "bash scripts/manual-zustand-test.sh",
+    "typecheck": "pnpm -r typecheck",
+    "test": "pnpm -r --if-present test"
+  },
+  "keywords": [
+    "cli",
+    "developer-tools",
+    "project-setup",
+    "integrations",
+    "nextjs",
+    "django"
+  ],
+  "author": "",
+  "packageManager": "pnpm@11.24.0",
   "devDependencies": {
     "@types/node": "^26.3.0",
     "tsup": "^8.5.1",

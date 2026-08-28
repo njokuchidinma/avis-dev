@@ -1,0 +1,100 @@
+---
+title: Avis
+description: Avis is an ecosystem-agnostic project integration CLI that safely equips existing projects after initialization.
+template: splash
+hero:
+  tagline: Equip your project after init.
+  actions:
+    - text: Get Started
+      link: /getting-started/quick-start/
+      icon: right-arrow
+    - text: View on GitHub
+      link: https://github.com/njokuchidinma/avis-dev
+      icon: external
+      variant: minimal
+---
+
+import { Card, CardGrid } from '@astrojs/starlight/components';
+
+Avis is a source-available, ecosystem-agnostic CLI that safely adds, configures, and verifies common development capabilities inside existing software projects.
+
+Framework scaffolders create the project. Avis equips it.
+
+```txt
+$ npm install -g avis-dev@alpha
+$ cd my-next-app
+$ avis add state-management
+
+Detected:
+Framework: nextjs
+Language: typescript
+Ecosystem: node
+Package manager: pnpm
+
+Avis will make these changes:
+
+Dependencies
++ zustand
+Files
++ src/stores/index.ts
+
+Apply changes? Yes
+OK Installed zustand.
+OK Created src/stores/index.ts.
+
+Verification:
+OK dependency installed
+OK store detected
+```
+
+## Why Avis Exists
+
+After `create-next-app`, `django-admin startproject`, `rails new`, `cargo new`, `dotnet new`, or another framework initializer, developers still repeat the same setup work: state management, data fetching, forms, validation, API tooling, testing, monitoring, storage, background jobs, and more.
+
+Avis starts after project initialization. It detects the project you already have, recommends compatible integrations, previews a ChangePlan, asks before applying changes, and then verifies the result.
+
+The public path is capability-first. In the current Next.js alpha, `avis add state-management` resolves to Zustand because it is the only built-in compatible state-management integration.
+
+## How Avis Works
+
+<CardGrid>
+	<Card title="Detect" icon="magnifier">
+		Avis inspects the current project for ecosystem, framework, language, and package manager signals.
+	</Card>
+	<Card title="Plan" icon="pencil">
+		An integration generates a ChangePlan listing dependencies, files, configuration patches, and diagnostics.
+	</Card>
+	<Card title="Apply" icon="setting">
+		Avis validates the plan, shows it to you, and asks for confirmation before modifying the project.
+	</Card>
+	<Card title="Verify" icon="check-circle">
+		`avis doctor` checks actual project state so installed dependencies are not mistaken for complete setup.
+	</Card>
+</CardGrid>
+
+## Current Support
+
+<CardGrid>
+	<Card title="Next.js" icon="seti:javascript">
+		Status: alpha. Current integrations: Zustand, TanStack Query, Zod, and React Hook Form.
+	</Card>
+	<Card title="Django" icon="seti:python">
+		Status: alpha. Current integration: Django REST Framework.
+	</Card>
+</CardGrid>
+
+<p class="status-note">
+Avis is currently in active development. Review ChangePlans before applying changes and use Avis inside projects tracked with version control.
+</p>
+
+## More Than Installation
+
+`avis doctor` is a core part of Avis. A dependency being present is not enough to mark an integration healthy. For example, a Next.js project with `@tanstack/react-query` installed but no generated provider module is reported as partially configured.
+
+## Contribute
+
+Avis is designed to become community-extensible, but it is not ready for broad external code contributions yet. Contributor docs are included so the project can open up cleanly when the foundation is stable.
+
+## Equip Your Next Project
+
+[Get Started](/getting-started/quick-start/) or [view Avis on GitHub](https://github.com/njokuchidinma/avis-dev).

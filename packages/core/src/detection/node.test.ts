@@ -5,9 +5,9 @@ import { describe, expect, it } from "vitest";
 import {
   detectNodeFrameworks,
   detectNodePackageManagers,
-  detectNodeProject,
-  detectProject
+  detectNodeProject
 } from "./node.js";
+import { detectProject } from "./project.js";
 import { frameworks, languages, packageManagers } from "../types/ids.js";
 
 describe("detectNodeProject", () => {

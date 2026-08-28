@@ -29,10 +29,6 @@ const nodePackageManagerLockfiles: Record<string, PackageManagerId> = {
 
 const knownPackageManagerIds = new Set<string>(Object.values(packageManagers));
 
-export async function detectProject(root: string): Promise<DetectionResult> {
-  return detectNodeProject(root);
-}
-
 export async function detectNodeProject(root: string): Promise<DetectionResult> {
   const packageJsonPath = path.join(root, "package.json");
   const packageJsonExists = await pathExists(packageJsonPath);

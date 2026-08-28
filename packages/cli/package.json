@@ -2,6 +2,7 @@
   "name": "@avis/cli",
   "version": "0.0.0",
   "description": "Command-line interface for Avis.",
+  "private": true,
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -18,7 +19,8 @@
     "dist"
   ],
   "dependencies": {
-    "@avis/core": "workspace:*"
+    "@avis/core": "workspace:*",
+    "@avis/registry": "workspace:*"
   },
   "scripts": {
     "build": "tsc -p tsconfig.build.json",

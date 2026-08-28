@@ -8,12 +8,26 @@ import { createNodePackageManagerAdapter } from "../package-managers/node.js";
 import type { AvisIntegration, CompatibilityResult } from "./types.js";
 
 export const zustandIntegration: AvisIntegration = {
-  id: "zustand",
-  name: "Zustand",
-  capability: "state-management",
-  supports: {
-    ecosystems: [ecosystems.node],
-    frameworks: [frameworks.nextjs]
+  manifest: {
+    id: "zustand",
+    name: "Zustand",
+    description: "Small, unopinionated client state management for React applications.",
+    capability: "state-management",
+    version: "1.0.0",
+    status: "stable",
+    supports: {
+      ecosystems: [ecosystems.node],
+      frameworks: [frameworks.nextjs],
+      packageManagers: [
+        packageManagers.npm,
+        packageManagers.pnpm,
+        packageManagers.yarn,
+        packageManagers.bun
+      ]
+    },
+    dependencies: [{ name: "zustand", type: "runtime" }],
+    configures: ["runtime dependency", "starter store module"],
+    source: { owner: "avis" }
   },
   isCompatible: isZustandCompatible,
   plan: async ({ context }): Promise<ChangePlan> => {
@@ -116,21 +130,23 @@ async function verifyZustand(context: ProjectContext): Promise<VerificationResul
     {
       id: "zustand-dependency",
       label: "dependency installed",
-      status: dependencyInstalled ? "pass" : "fail",
-      message: dependencyInstalled ? undefined : "zustand is missing from package.json."
+      status: dependencyInstalled ? "pass" : "skipped",
+      message: dependencyInstalled ? undefined : "zustand is not installed.",
+      remediation: dependencyInstalled ? undefined : "Run avis add zustand."
     },
     {
       id: "zustand-store",
       label: "store detected",
-      status: storeExists ? "pass" : "warning",
-      message: storeExists ? undefined : `${storePath} was not found.`
+      status: storeExists ? "pass" : dependencyInstalled ? "warning" : "skipped",
+      message: storeExists ? undefined : `${storePath} was not found.`,
+      remediation: storeExists ? undefined : "Run avis add zustand to create the starter store."
     }
   ] as const;
-  const hasFailure = checks.some((check) => check.status === "fail");
   const hasWarning = checks.some((check) => check.status === "warning");
 
   return {
-    status: hasFailure ? "fail" : hasWarning ? "warning" : "pass",
+    integrationId: "zustand",
+    health: dependencyInstalled ? (hasWarning ? "partial" : "healthy") : "not-installed",
     checks: [...checks],
     diagnostics: []
   };
