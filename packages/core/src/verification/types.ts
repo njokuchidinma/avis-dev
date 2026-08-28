@@ -1,16 +1,26 @@
 import type { Diagnostic } from "../types/common.js";
+import type { IntegrationId } from "../types/ids.js";
 
-export type VerificationStatus = "pass" | "warning" | "fail";
+export type IntegrationHealth =
+  | "not-installed"
+  | "healthy"
+  | "partial"
+  | "broken"
+  | "unknown";
+
+export type VerificationCheckStatus = "pass" | "warning" | "fail" | "skipped";
 
 export interface VerificationCheck {
   id: string;
   label: string;
-  status: VerificationStatus;
+  status: VerificationCheckStatus;
   message?: string;
+  remediation?: string;
 }
 
 export interface VerificationResult {
-  status: VerificationStatus;
+  integrationId: IntegrationId;
+  health: IntegrationHealth;
   checks: VerificationCheck[];
   diagnostics: Diagnostic[];
 }

@@ -54,12 +54,6 @@ export function createNodePackageManagerAdapter(
   };
 }
 
-export function createPackageManagerAdapter(
-  id: PackageManagerId
-): PackageManagerAdapter {
-  return createNodePackageManagerAdapter(id);
-}
-
 export const nodePackageManagerAdapters = [
   createNodePackageManagerAdapter(packageManagers.pnpm),
   createNodePackageManagerAdapter(packageManagers.npm),
