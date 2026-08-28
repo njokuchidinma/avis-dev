@@ -29,8 +29,9 @@
   },
   "scripts": {
     "avis": "node packages/cli/dist/index.js",
-    "build": "pnpm build:package && pnpm -r build",
+    "build": "pnpm build:workspace && pnpm build:package && pnpm docs:build",
     "build:package": "tsup packages/cli/src/index.ts --format esm --platform node --target node20 --no-splitting --sourcemap --clean --out-dir dist",
+    "build:workspace": "pnpm --filter @avis/core --filter @avis/registry --filter @avis/cli build",
     "docs:build": "pnpm --filter @avis/docs build",
     "docs:dev": "pnpm --filter @avis/docs dev",
     "docs:preview": "pnpm --filter @avis/docs preview",
