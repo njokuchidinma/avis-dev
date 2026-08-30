@@ -33,3 +33,5 @@ If exactly one compatible integration exists for the detected project and capabi
 ```sh
 avis add lucide-react
 ```
+
+Generated capability and integration metadata is available in [Generated Registry](/generated/registry/).

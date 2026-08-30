@@ -16,6 +16,7 @@ export const rustTracingIntegration: AvisIntegration = {
     capability: "observability",
     version: "1.0.0",
     status: "experimental",
+    trust: "official",
     supports: {
       ecosystems: [ecosystems.rust],
       packageManagers: [packageManagers.cargo]

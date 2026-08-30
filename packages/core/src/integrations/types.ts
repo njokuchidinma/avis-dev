@@ -25,6 +25,11 @@ export interface IntegrationSupport {
 }
 
 export type IntegrationStatus = "experimental" | "stable" | "deprecated";
+export type IntegrationTrustLevel =
+  | "official"
+  | "verified"
+  | "community"
+  | "experimental";
 
 export interface IntegrationDependencyRequirement {
   name: string;
@@ -49,6 +54,7 @@ export interface AvisIntegrationManifest {
   capability: CapabilityId;
   version: string;
   status: IntegrationStatus;
+  trust: IntegrationTrustLevel;
   supports: IntegrationSupport;
   dependencies?: IntegrationDependencyRequirement[];
   configures?: string[];

@@ -13,6 +13,7 @@ Current fields include:
 - `capability`
 - `version`
 - `status`
+- `trust`
 - `supports`
 - `dependencies`
 - `configures`
@@ -24,5 +25,12 @@ Supported statuses are:
 - `experimental`
 - `stable`
 - `deprecated`
+
+Supported trust levels are:
+
+- `official`
+- `verified`
+- `community`
+- `experimental`
 
 Project support should still be described carefully in documentation while Avis itself is alpha.

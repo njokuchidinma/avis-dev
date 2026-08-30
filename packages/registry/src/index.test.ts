@@ -147,6 +147,34 @@ describe("IntegrationRegistry", () => {
       "Detected existing state-management integration redux-toolkit with health healthy. Adding zustand may duplicate project architecture."
     ]);
   });
+
+  it("searches capabilities, integrations, and stacks", () => {
+    const registry = new IntegrationRegistry({
+      capabilities: [
+        {
+          id: "icons",
+          name: "Icons",
+          aliases: ["icon-pack"]
+        }
+      ],
+      integrations: [lucideReactIntegration],
+      stacks: [
+        {
+          id: "next-standard",
+          name: "Next Standard",
+          description: "Common Next.js app capabilities.",
+          capabilities: ["icons"]
+        }
+      ]
+    });
+
+    expect(registry.search("icon").map((result) => `${result.kind}:${result.id}`)).toEqual([
+      "capability:icons",
+      "integration:lucide-react",
+      "stack:next-standard"
+    ]);
+    expect(registry.search("icon package")[0]?.id).toBe("icons");
+  });
 });
 
 describe("manifest validation", () => {
@@ -159,6 +187,7 @@ describe("manifest validation", () => {
         capability: "",
         version: "",
         status: "stable",
+        trust: "official",
         supports: {
           ecosystems: []
         }
@@ -220,6 +249,7 @@ const alternateStateIntegration: AvisIntegration = {
     capability: "state-management",
     version: "1.0.0",
     status: "stable",
+    trust: "official",
     supports: {
       ecosystems: ["node"],
       frameworks: ["nextjs"]
@@ -252,6 +282,7 @@ const nextIntegration: AvisIntegration = {
     capability: "state-management",
     version: "1.0.0",
     status: "stable",
+    trust: "official",
     supports: {
       ecosystems: ["node"],
       frameworks: ["nextjs"]
@@ -269,6 +300,7 @@ const lucideReactIntegration: AvisIntegration = {
     capability: "icons",
     version: "1.0.0",
     status: "stable",
+    trust: "official",
     supports: {
       ecosystems: ["node"],
       frameworks: ["nextjs"]
@@ -288,6 +320,7 @@ const reactIconsIntegration: AvisIntegration = {
     capability: "icons",
     version: "1.0.0",
     status: "stable",
+    trust: "official",
     supports: {
       ecosystems: ["node"],
       frameworks: ["nextjs"]

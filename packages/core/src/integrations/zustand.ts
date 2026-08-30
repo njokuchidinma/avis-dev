@@ -15,6 +15,7 @@ export const zustandIntegration: AvisIntegration = {
     capability: "state-management",
     version: "1.0.0",
     status: "stable",
+    trust: "official",
     supports: {
       ecosystems: [ecosystems.node],
       frameworks: [frameworks.nextjs],

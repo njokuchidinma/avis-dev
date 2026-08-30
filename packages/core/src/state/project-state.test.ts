@@ -97,6 +97,7 @@ const integration: AvisIntegration = {
     capability: "data-fetching",
     version: "1.0.0",
     status: "stable",
+    trust: "official",
     supports: {
       ecosystems: ["node"]
     }

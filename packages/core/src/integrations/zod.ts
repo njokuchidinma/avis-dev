@@ -17,6 +17,7 @@ export const zodIntegration: AvisIntegration = {
     capability: "validation",
     version: "1.0.0",
     status: "stable",
+    trust: "official",
     supports: {
       ecosystems: [ecosystems.node],
       frameworks: [frameworks.nextjs],

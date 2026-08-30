@@ -30,9 +30,11 @@
   "scripts": {
     "avis": "node packages/cli/dist/index.js",
     "build": "pnpm build:workspace && pnpm build:package && pnpm docs:build",
+    "build:native-manifest": "node scripts/generate-native-manifest.mjs",
     "build:package": "tsup packages/cli/src/index.ts --format esm --platform node --target node20 --no-splitting --sourcemap --clean --out-dir dist",
     "build:workspace": "pnpm --filter @avis/core --filter @avis/registry --filter @avis/cli build",
     "docs:build": "pnpm --filter @avis/docs build",
+    "docs:generate-registry": "tsx scripts/generate-registry-docs.ts",
     "docs:dev": "pnpm --filter @avis/docs dev",
     "docs:preview": "pnpm --filter @avis/docs preview",
     "pack:dry-run": "npm pack --dry-run",

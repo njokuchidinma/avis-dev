@@ -104,6 +104,13 @@ avis stack show next-standard
 avis stack use next-standard --dry-run
 ```
 
+Search discovers capabilities, integrations, and stacks:
+
+```sh
+avis search icons
+avis show icons
+```
+
 ## Current Supported Frameworks
 
 | Framework | Status | Integrations |
@@ -161,6 +168,12 @@ avis doctor --strict
 ```
 
 Avis records successful applies in `.avis/state.json`, but project inspection remains the source of truth.
+
+Generated registry docs can be refreshed from manifests:
+
+```sh
+pnpm docs:generate-registry
+```
 
 ## Documentation
 

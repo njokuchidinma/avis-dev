@@ -16,6 +16,7 @@ export const reactIconsIntegration = createDependencyOnlyIntegration({
     capability: "icons",
     version: "1.0.0",
     status: "stable",
+    trust: "official",
     supports: {
       ecosystems: [ecosystems.node],
       frameworks: [frameworks.nextjs],

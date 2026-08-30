@@ -20,6 +20,16 @@ export interface IntegrationRecommendation {
   reasons: string[];
 }
 
+export type RegistrySearchResultKind = "capability" | "integration" | "stack";
+
+export interface RegistrySearchResult {
+  kind: RegistrySearchResultKind;
+  id: string;
+  name: string;
+  description?: string;
+  score: number;
+}
+
 export interface StackManifest {
   id: string;
   name: string;
@@ -66,6 +76,81 @@ export class IntegrationRegistry {
 
   findStackById(id: string): StackManifest | undefined {
     return this.stacks.find((stack) => stack.id === id);
+  }
+
+  search(query: string): RegistrySearchResult[] {
+    const normalizedQuery = normalizeIdentifier(query);
+    if (!normalizedQuery) {
+      return [];
+    }
+
+    const results: RegistrySearchResult[] = [
+      ...this.capabilities.flatMap((capability) => {
+        const score = scoreSearchCandidate(normalizedQuery, [
+          capability.id,
+          capability.name,
+          capability.description,
+          ...(capability.aliases ?? [])
+        ]);
+
+        return score > 0
+          ? [
+              {
+                kind: "capability" as const,
+                id: capability.id,
+                name: capability.name,
+                description: capability.description,
+                score
+              }
+            ]
+          : [];
+      }),
+      ...this.integrations.flatMap((integration) => {
+        const score = scoreSearchCandidate(normalizedQuery, [
+          integration.manifest.id,
+          integration.manifest.name,
+          integration.manifest.description,
+          integration.manifest.capability,
+          ...(integration.manifest.configures ?? []),
+          ...(integration.manifest.dependencies?.map((dependency) => dependency.name) ?? [])
+        ]);
+
+        return score > 0
+          ? [
+              {
+                kind: "integration" as const,
+                id: integration.manifest.id,
+                name: integration.manifest.name,
+                description: integration.manifest.description,
+                score
+              }
+            ]
+          : [];
+      }),
+      ...this.stacks.flatMap((stack) => {
+        const score = scoreSearchCandidate(normalizedQuery, [
+          stack.id,
+          stack.name,
+          stack.description,
+          ...(stack.capabilities ?? []),
+          ...(stack.integrations ?? [])
+        ]);
+
+        return score > 0
+          ? [
+              {
+                kind: "stack" as const,
+                id: stack.id,
+                name: stack.name,
+                description: stack.description,
+                score
+              }
+            ]
+          : [];
+      })
+    ];
+
+    return results.sort((left, right) => right.score - left.score || left.id.localeCompare(right.id));
   }
 
   findCompatibleIntegrations(context: ProjectContext): AvisIntegration[] {
@@ -253,7 +338,8 @@ function getRecommendationReasons(
 ): string[] {
   const reasons = [
     `compatible with ${context.framework?.id ?? context.ecosystem}`,
-    `${formatStatusLabel(integration.manifest.status)} integration`
+    `${formatStatusLabel(integration.manifest.status)} integration`,
+    `${formatTrustLabel(integration.manifest.trust)} trust`
   ];
 
   if (integration.manifest.id === defaultIntegrationId) {
@@ -302,8 +388,66 @@ function formatStatusLabel(status: AvisIntegrationManifest["status"]): string {
   }
 }
 
+function formatTrustLabel(trust: AvisIntegrationManifest["trust"]): string {
+  switch (trust) {
+    case "official":
+      return "official";
+    case "verified":
+      return "verified";
+    case "community":
+      return "community";
+    case "experimental":
+      return "experimental";
+  }
+}
+
 function normalizeIdentifier(value: string): string {
   return value.trim().toLowerCase().replaceAll("_", "-").replace(/\s+/g, "-");
+}
+
+function scoreSearchCandidate(
+  normalizedQuery: string,
+  values: Array<string | undefined>
+): number {
+  let score = 0;
+  const queryTokens = tokenizeIdentifier(normalizedQuery);
+
+  for (const value of values) {
+    if (!value) {
+      continue;
+    }
+
+    const normalizedValue = normalizeIdentifier(value);
+    const valueTokens = tokenizeIdentifier(normalizedValue);
+    if (normalizedValue === normalizedQuery) {
+      score = Math.max(score, 100);
+    } else if (normalizedValue.startsWith(normalizedQuery)) {
+      score = Math.max(score, 75);
+    } else if (normalizedValue.includes(normalizedQuery)) {
+      score = Math.max(score, 50);
+    } else if (
+      queryTokens.length > 1 &&
+      queryTokens.every((queryToken) =>
+        valueTokens.some((valueToken) => tokensMatch(queryToken, valueToken))
+      )
+    ) {
+      score = Math.max(score, 35);
+    }
+  }
+
+  return score;
+}
+
+function tokenizeIdentifier(value: string): string[] {
+  return normalizeIdentifier(value).split("-").filter(Boolean);
+}
+
+function tokensMatch(queryToken: string, valueToken: string): boolean {
+  return (
+    queryToken === valueToken ||
+    queryToken.startsWith(valueToken) ||
+    valueToken.startsWith(queryToken)
+  );
 }
 
 export function createIntegrationRegistry(options: {
@@ -341,6 +485,10 @@ export function validateIntegrationManifest(
 
   if (!["experimental", "stable", "deprecated"].includes(manifest.status)) {
     errors.push("Integration status is invalid.");
+  }
+
+  if (!["official", "verified", "community", "experimental"].includes(manifest.trust)) {
+    errors.push("Integration trust level is invalid.");
   }
 
   if (manifest.supports.ecosystems.length === 0) {

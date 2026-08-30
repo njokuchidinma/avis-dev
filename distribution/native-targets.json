@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 1,
+  "targets": [
+    {
+      "id": "macos-arm64",
+      "platform": "darwin",
+      "arch": "arm64",
+      "artifactName": "avis-darwin-arm64"
+    },
+    {
+      "id": "macos-x64",
+      "platform": "darwin",
+      "arch": "x64",
+      "artifactName": "avis-darwin-x64"
+    },
+    {
+      "id": "linux-x64",
+      "platform": "linux",
+      "arch": "x64",
+      "artifactName": "avis-linux-x64"
+    },
+    {
+      "id": "linux-arm64",
+      "platform": "linux",
+      "arch": "arm64",
+      "artifactName": "avis-linux-arm64"
+    },
+    {
+      "id": "windows-x64",
+      "platform": "win32",
+      "arch": "x64",
+      "artifactName": "avis-win32-x64.exe"
+    }
+  ]
+}

@@ -113,6 +113,17 @@ export async function runCli(argv = process.argv.slice(2)): Promise<void> {
     return;
   }
 
+  if (command === "search" && subject) {
+    printSearch(positionals.slice(1).join(" "));
+    return;
+  }
+
+  if (command === "search") {
+    console.error("Usage: avis search <query>");
+    process.exitCode = 1;
+    return;
+  }
+
   if (command === "stack") {
     await runStack(subject, positionals[2], options);
     return;
@@ -660,6 +671,8 @@ function formatDoctorJson(
       id: entry.integration.manifest.id,
       name: entry.integration.manifest.name,
       capability: entry.integration.manifest.capability,
+      status: entry.integration.manifest.status,
+      trust: entry.integration.manifest.trust,
       health: entry.verification.health,
       checks: entry.verification.checks,
       diagnostics: entry.verification.diagnostics
@@ -697,6 +710,7 @@ Usage:
   avis add zustand
   avis repair <integration>
   avis list
+  avis search <query>
   avis show <integration|capability>
   avis stack list
   avis stack show <stack>
@@ -704,6 +718,21 @@ Usage:
   avis integration create <integration-id>
   avis doctor [--json] [--strict]
 `);
+}
+
+function printSearch(query: string): void {
+  const results = registry.search(query);
+
+  console.log(`Search results for "${query}":`);
+  if (results.length === 0) {
+    console.log("- none");
+    return;
+  }
+
+  for (const result of results) {
+    const detail = result.description ? ` - ${result.description}` : "";
+    console.log(`- ${result.kind}: ${result.id} (${result.name})${detail}`);
+  }
 }
 
 function printList(): void {
@@ -716,7 +745,7 @@ function printList(): void {
   console.log("Integrations:");
   for (const integration of registry.integrations) {
     console.log(
-      `- ${integration.manifest.id}: ${integration.manifest.name} (${integration.manifest.capability})`
+      `- ${integration.manifest.id}: ${integration.manifest.name} (${integration.manifest.capability}, ${formatStatusLabel(integration.manifest.status)}, ${formatTrustLabel(integration.manifest.trust)})`
     );
   }
 }
@@ -740,6 +769,15 @@ function printShow(subject: string): void {
     }
 
     console.log("");
+    console.log("Capability");
+    console.log(`- ID: ${capability.id}`);
+    console.log(`- Aliases: ${formatList(capability.aliases)}`);
+    console.log(`- Exclusive: ${capability.exclusive ? "yes" : "no"}`);
+    console.log(
+      `- Defaults: ${formatCapabilityDefaults(capability.defaultIntegrations)}`
+    );
+
+    console.log("");
     console.log("Integrations:");
     if (integrations.length === 0) {
       console.log("- none");
@@ -748,7 +786,7 @@ function printShow(subject: string): void {
 
     for (const candidate of integrations) {
       console.log(
-        `- ${candidate.manifest.id}: ${candidate.manifest.name} (${formatStatusLabel(candidate.manifest.status)})`
+        `- ${candidate.manifest.id}: ${candidate.manifest.name} (${formatStatusLabel(candidate.manifest.status)}, ${formatTrustLabel(candidate.manifest.trust)})`
       );
     }
     return;
@@ -770,6 +808,7 @@ function printIntegrationDetails(integration: AvisIntegration): void {
   console.log(`- Capability: ${manifest.capability}`);
   console.log(`- Version: ${manifest.version}`);
   console.log(`- Status: ${formatStatusLabel(manifest.status)}`);
+  console.log(`- Trust: ${formatTrustLabel(manifest.trust)}`);
   console.log("");
   console.log("Supports");
   console.log(`- Ecosystems: ${formatList(manifest.supports.ecosystems)}`);
@@ -864,6 +903,22 @@ function formatList(values: readonly string[] | undefined): string {
   return values && values.length > 0 ? values.join(", ") : "any";
 }
 
+function formatCapabilityDefaults(
+  defaults: Partial<Record<string, string>> | undefined
+): string {
+  const entries = Object.entries(defaults ?? {}).filter(
+    (entry): entry is [string, string] => entry[1] !== undefined
+  );
+
+  if (entries.length === 0) {
+    return "none";
+  }
+
+  return entries
+    .map(([ecosystem, integration]) => `${ecosystem}: ${integration}`)
+    .join(", ");
+}
+
 function formatStatusLabel(status: AvisIntegration["manifest"]["status"]): string {
   switch (status) {
     case "experimental":
@@ -872,6 +927,19 @@ function formatStatusLabel(status: AvisIntegration["manifest"]["status"]): strin
       return "Stable";
     case "deprecated":
       return "Deprecated";
+  }
+}
+
+function formatTrustLabel(trust: AvisIntegration["manifest"]["trust"]): string {
+  switch (trust) {
+    case "official":
+      return "Official";
+    case "verified":
+      return "Verified";
+    case "community":
+      return "Community";
+    case "experimental":
+      return "Experimental";
   }
 }
 
@@ -967,6 +1035,7 @@ export const manifest = {
   capability: "replace-with-capability-id",
   version: "0.1.0",
   status: "experimental",
+  trust: "community",
   supports: {
     ecosystems: ["node"]
   },

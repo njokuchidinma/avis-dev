@@ -19,6 +19,7 @@ export const flutterRiverpodIntegration: AvisIntegration = {
     capability: "state-management",
     version: "1.0.0",
     status: "experimental",
+    trust: "official",
     supports: {
       ecosystems: [ecosystems.dart],
       frameworks: [frameworks.flutter],

@@ -11,6 +11,7 @@ Current commands:
 - `avis add <integration>`
 - `avis repair <integration|capability>`
 - `avis list`
+- `avis search <query>`
 - `avis show <integration|capability>`
 - `avis stack list`
 - `avis stack show <stack>`
