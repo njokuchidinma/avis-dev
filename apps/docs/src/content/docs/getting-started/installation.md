@@ -11,6 +11,12 @@ During alpha, npm is the first distribution channel:
 npm install -g avis-dev@alpha
 ```
 
+The installed command is `avis`:
+
+```sh
+avis --help
+```
+
 Verify the command is available:
 
 ```sh
@@ -54,6 +60,20 @@ avis add django-rest-framework
 ```
 
 When Avis adds an integration, it uses the target project's native package manager. For example, Next.js uses npm, pnpm, yarn, or bun. Django uses pip, uv, or Poetry.
+
+## Alpha Publishing Standard
+
+The npm alpha package should contain the compiled CLI bundle, package metadata, README, license, and notice files. Before publishing a new alpha, run:
+
+```sh
+pnpm release:check
+```
+
+If local npm cache permissions block the pack step, rerun the pack check with a writable cache:
+
+```sh
+npm_config_cache=/private/tmp/avis-npm-cache npm pack --dry-run
+```
 
 ## Local Development Install
 

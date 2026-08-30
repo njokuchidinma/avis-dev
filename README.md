@@ -70,6 +70,12 @@ Avis itself is not an application dependency. Do not add Avis to `requirements.t
 
 During alpha, npm is the distribution channel for the Avis CLI. When Avis operates inside a project, it uses that project's native package manager.
 
+Before publishing a new alpha package, run:
+
+```sh
+pnpm release:check
+```
+
 ## Local Development
 
 Local development flow:
