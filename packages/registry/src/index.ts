@@ -23,8 +23,9 @@ export interface IntegrationRecommendation {
 export interface StackManifest {
   id: string;
   name: string;
-  integrations: string[];
   description?: string;
+  capabilities?: string[];
+  integrations?: string[];
 }
 
 export interface ManifestValidationResult {
@@ -35,13 +36,16 @@ export interface ManifestValidationResult {
 export class IntegrationRegistry {
   readonly capabilities: Capability[];
   readonly integrations: AvisIntegration[];
+  readonly stacks: StackManifest[];
 
   constructor(options: {
     capabilities: Capability[];
     integrations: AvisIntegration[];
+    stacks?: StackManifest[];
   }) {
     this.capabilities = [...options.capabilities];
     this.integrations = [...options.integrations];
+    this.stacks = [...(options.stacks ?? [])];
   }
 
   findCapabilityById(id: string): Capability | undefined {
@@ -58,6 +62,10 @@ export class IntegrationRegistry {
 
   findIntegrationById(id: string): AvisIntegration | undefined {
     return this.integrations.find((integration) => integration.manifest.id === id);
+  }
+
+  findStackById(id: string): StackManifest | undefined {
+    return this.stacks.find((stack) => stack.id === id);
   }
 
   findCompatibleIntegrations(context: ProjectContext): AvisIntegration[] {
@@ -95,6 +103,118 @@ export class IntegrationRegistry {
         reasons: getRecommendationReasons(integration, context, defaultIntegrationId)
       }))
       .sort(compareRecommendations);
+  }
+
+  resolveStack(
+    stackId: string,
+    context: ProjectContext
+  ): { integrations: AvisIntegration[]; diagnostics: string[] } | undefined {
+    const stack = this.findStackById(stackId);
+    if (!stack) {
+      return undefined;
+    }
+
+    const integrations: AvisIntegration[] = [];
+    const diagnostics: string[] = [];
+    const selectedIds = new Set<string>();
+
+    for (const capabilityId of stack.capabilities ?? []) {
+      const recommendations = this.recommendIntegrationsForCapability(
+        capabilityId,
+        context
+      );
+      const recommended = recommendations[0]?.integration;
+      if (!recommended) {
+        diagnostics.push(`No compatible integration found for capability ${capabilityId}.`);
+        continue;
+      }
+
+      if (!selectedIds.has(recommended.manifest.id)) {
+        integrations.push(recommended);
+        selectedIds.add(recommended.manifest.id);
+      }
+    }
+
+    for (const integrationId of stack.integrations ?? []) {
+      const integration = this.findIntegrationById(integrationId);
+      if (!integration) {
+        diagnostics.push(`Unknown integration ${integrationId}.`);
+        continue;
+      }
+
+      const compatibility = integration.isCompatible(context);
+      if (!compatibility.supported) {
+        diagnostics.push(compatibility.reason);
+        continue;
+      }
+
+      if (!selectedIds.has(integration.manifest.id)) {
+        integrations.push(integration);
+        selectedIds.add(integration.manifest.id);
+      }
+    }
+
+    diagnostics.push(...this.detectIntegrationConflicts(integrations));
+
+    return { integrations, diagnostics };
+  }
+
+  detectIntegrationConflicts(integrations: AvisIntegration[]): string[] {
+    const diagnostics: string[] = [];
+    const integrationsByCapability = new Map<string, AvisIntegration[]>();
+
+    for (const integration of integrations) {
+      const group = integrationsByCapability.get(integration.manifest.capability) ?? [];
+      group.push(integration);
+      integrationsByCapability.set(integration.manifest.capability, group);
+    }
+
+    for (const [capabilityId, group] of integrationsByCapability) {
+      const capability = this.findCapabilityByQuery(capabilityId);
+      if (!capability?.exclusive || group.length < 2) {
+        continue;
+      }
+
+      diagnostics.push(
+        `Capability ${capability.id} is exclusive, but stack selects ${group
+          .map((integration) => integration.manifest.id)
+          .join(", ")}.`
+      );
+    }
+
+    return diagnostics;
+  }
+
+  async findInstalledCapabilityConflicts(
+    selectedIntegration: AvisIntegration,
+    context: ProjectContext
+  ): Promise<string[]> {
+    const capability = this.findCapabilityByQuery(selectedIntegration.manifest.capability);
+    if (!capability?.exclusive) {
+      return [];
+    }
+
+    const alternatives = this.findCompatibleIntegrationsForCapability(
+      capability.id,
+      context
+    ).filter(
+      (integration) =>
+        integration.manifest.id !== selectedIntegration.manifest.id && integration.verify
+    );
+    const conflicts: string[] = [];
+
+    for (const integration of alternatives) {
+      const verification = await integration.verify?.(context);
+      if (!verification || verification.health === "not-installed") {
+        continue;
+      }
+
+      conflicts.push(
+        `Detected existing ${capability.id} integration ${integration.manifest.id} with health ${verification.health}. Adding ${selectedIntegration.manifest.id} may duplicate project architecture.`
+      );
+    }
+
+    return conflicts;
   }
 
   getSupportGroups(): IntegrationSupportGroup[] {
@@ -189,6 +309,7 @@ function normalizeIdentifier(value: string): string {
 export function createIntegrationRegistry(options: {
   capabilities: Capability[];
   integrations: AvisIntegration[];
+  stacks?: StackManifest[];
 }): IntegrationRegistry {
   return new IntegrationRegistry(options);
 }
@@ -250,8 +371,11 @@ export function validateStackManifest(manifest: StackManifest): ManifestValidati
     errors.push("Stack name is required.");
   }
 
-  if (manifest.integrations.length === 0) {
-    errors.push("Stack must include at least one integration.");
+  if (
+    (manifest.integrations?.length ?? 0) === 0 &&
+    (manifest.capabilities?.length ?? 0) === 0
+  ) {
+    errors.push("Stack must include at least one integration or capability.");
   }
 
   return {

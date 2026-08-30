@@ -1,5 +1,6 @@
 import type { ChangePlan } from "../planning/change-plan.js";
 import { createPackageManagerAdapter } from "../package-managers/factory.js";
+import type { PackageManagerAdapter } from "../package-managers/types.js";
 import type { ProjectContext } from "../types/project-context.js";
 import type { VerificationResult } from "../verification/types.js";
 import type {
@@ -10,7 +11,8 @@ import type {
 
 export interface DependencyOnlyIntegrationOptions {
   manifest: AvisIntegrationManifest;
-  packageName: string;
+  packageName?: string;
+  packageNames?: string[];
   planTitle: string;
   dependencyOperationId: string;
   dependencyDescription: string;
@@ -35,9 +37,10 @@ export function createDependencyOnlyIntegration(
       }
 
       const packageManager = createPackageManagerAdapter(packageManagerId);
-      const dependencyInstalled = await packageManager.isDependencyInstalled(
+      const missingPackageNames = await getMissingPackageNames(
         context,
-        options.packageName
+        getPackageNames(options),
+        packageManager
       );
 
       return {
@@ -45,7 +48,7 @@ export function createDependencyOnlyIntegration(
         title: options.planTitle,
         integrationId: options.manifest.id,
         target: context,
-        operations: dependencyInstalled
+        operations: missingPackageNames.length === 0
           ? []
           : [
               {
@@ -54,7 +57,7 @@ export function createDependencyOnlyIntegration(
                 description: options.dependencyDescription,
                 dependencyType: "runtime",
                 packageManager: packageManagerId,
-                packages: [{ name: options.packageName }]
+                packages: missingPackageNames.map((name) => ({ name }))
               }
             ],
         diagnostics: []
@@ -150,25 +153,59 @@ async function verifyDependencyOnlyIntegration(
   }
 
   const packageManager = createPackageManagerAdapter(context.packageManager.id);
-  const dependencyInstalled = await packageManager.isDependencyInstalled(
+  const packageNames = getPackageNames(options);
+  const missingPackageNames = await getMissingPackageNames(
     context,
-    options.packageName
+    packageNames,
+    packageManager
   );
+  const installedCount = packageNames.length - missingPackageNames.length;
+  const health =
+    missingPackageNames.length === 0
+      ? "healthy"
+      : installedCount > 0
+        ? "partial"
+        : "not-installed";
 
   return {
     integrationId: options.manifest.id,
-    health: dependencyInstalled ? "healthy" : "not-installed",
+    health,
     checks: [
       {
         id: `${options.manifest.id}-dependency`,
         label: "dependency installed",
-        status: dependencyInstalled ? "pass" : "skipped",
-        message: dependencyInstalled ? undefined : `${options.packageName} is not installed.`,
-        remediation: dependencyInstalled
+        status:
+          missingPackageNames.length === 0
+            ? "pass"
+            : installedCount > 0
+              ? "warning"
+              : "skipped",
+        message: missingPackageNames.length === 0
+          ? undefined
+          : `${missingPackageNames.join(", ")} is not installed.`,
+        remediation: missingPackageNames.length === 0
           ? undefined
           : `Run avis add ${options.manifest.id}.`
       }
     ],
     diagnostics: []
   };
+}
+
+function getPackageNames(options: DependencyOnlyIntegrationOptions): string[] {
+  return options.packageNames ?? (options.packageName ? [options.packageName] : []);
+}
+
+async function getMissingPackageNames(
+  context: ProjectContext,
+  packageNames: string[],
+  packageManager: PackageManagerAdapter
+): Promise<string[]> {
+  const results = await Promise.all(
+    packageNames.map((packageName) =>
+      packageManager.isDependencyInstalled(context, packageName)
+    )
+  );
+
+  return packageNames.filter((_, index) => !results[index]);
 }

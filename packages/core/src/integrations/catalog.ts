@@ -7,6 +7,7 @@ import type { ProjectContext } from "../types/project-context.js";
 import { ecosystems } from "../types/ids.js";
 import { reactHookFormIntegration } from "./react-hook-form.js";
 import { reactIconsIntegration } from "./react-icons.js";
+import { reduxToolkitIntegration } from "./redux-toolkit.js";
 import { rustTracingIntegration } from "./rust-tracing.js";
 import { tanstackQueryIntegration } from "./tanstack-query.js";
 import type { AvisIntegration, Capability } from "./types.js";
@@ -76,6 +77,7 @@ export const builtInCapabilities: Capability[] = [
 
 export const builtInIntegrations: AvisIntegration[] = [
   zustandIntegration,
+  reduxToolkitIntegration,
   tanstackQueryIntegration,
   djangoRestFrameworkIntegration,
   reactHookFormIntegration,

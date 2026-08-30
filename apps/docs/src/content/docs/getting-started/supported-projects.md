@@ -30,6 +30,7 @@ Supported package managers:
 Current integrations:
 
 - Zustand
+- Redux Toolkit
 - TanStack Query
 - Zod
 - React Hook Form

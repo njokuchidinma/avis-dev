@@ -63,6 +63,7 @@ Then run `avis` inside any supported project:
 cd my-next-app
 avis doctor
 avis add state-management
+avis add icons --dry-run
 ```
 
 Avis itself is not an application dependency. Do not add Avis to `requirements.txt`, `pyproject.toml`, `composer.json`, `pubspec.yaml`, `Cargo.toml`, or equivalent project dependency files.
@@ -96,11 +97,18 @@ avis doctor
 
 Review the ChangePlan before confirming.
 
+Stacks compose several capabilities into one preview:
+
+```sh
+avis stack show next-standard
+avis stack use next-standard --dry-run
+```
+
 ## Current Supported Frameworks
 
 | Framework | Status | Integrations |
 | --- | --- | --- |
-| Next.js | Alpha | Zustand, TanStack Query, Zod, React Hook Form, Lucide React, React Icons, Heroicons React |
+| Next.js | Alpha | Zustand, Redux Toolkit, TanStack Query, Zod, React Hook Form, Lucide React, React Icons, Heroicons React |
 | Django | Alpha | Django REST Framework |
 | Laravel | Experimental | Laravel Sanctum |
 | Flutter | Experimental | Flutter Riverpod |
@@ -109,6 +117,7 @@ Review the ChangePlan before confirming.
 ## Current Integrations
 
 - `zustand`
+- `redux-toolkit`
 - `tanstack-query`
 - `zod`
 - `react-hook-form`
@@ -143,6 +152,15 @@ For example, `avis add icons` in a compatible Next.js project recommends Lucide 
 `avis doctor` checks the actual project state. Dependency presence alone does not mean an integration is healthy.
 
 For example, a Next.js project with `@tanstack/react-query` installed but no Avis-recognized provider module is partially configured, not healthy.
+
+For CI, use:
+
+```sh
+avis doctor --json
+avis doctor --strict
+```
+
+Avis records successful applies in `.avis/state.json`, but project inspection remains the source of truth.
 
 ## Documentation
 

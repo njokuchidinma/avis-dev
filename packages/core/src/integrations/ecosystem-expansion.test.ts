@@ -15,6 +15,7 @@ import { heroiconsReactIntegration } from "./heroicons-react.js";
 import { laravelSanctumIntegration } from "./laravel-sanctum.js";
 import { lucideReactIntegration } from "./lucide-react.js";
 import { reactIconsIntegration } from "./react-icons.js";
+import { reduxToolkitIntegration } from "./redux-toolkit.js";
 import { rustTracingIntegration } from "./rust-tracing.js";
 
 describe("V2 ecosystem integrations", () => {
@@ -169,6 +170,27 @@ tracing = "0.1"
         }
       ]
     });
+  });
+
+  it("plans only missing packages for multi-package dependency integrations", async () => {
+    const root = await createNextProject({
+      dependencies: {
+        next: "16.0.0",
+        "@reduxjs/toolkit": "2.0.0"
+      }
+    });
+
+    const context = createProjectContext(await detectNodeProject(root));
+    const plan = await reduxToolkitIntegration.plan({ context });
+    const verification = await reduxToolkitIntegration.verify?.(context);
+
+    expect(plan.operations).toMatchObject([
+      {
+        id: "add-redux-toolkit",
+        packages: [{ name: "react-redux" }]
+      }
+    ]);
+    expect(verification?.health).toBe("partial");
   });
 });
 

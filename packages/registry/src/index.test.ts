@@ -81,6 +81,72 @@ describe("IntegrationRegistry", () => {
       "default recommendation for this ecosystem"
     );
   });
+
+  it("resolves stacks through capability recommendations", () => {
+    const registry = new IntegrationRegistry({
+      capabilities: [
+        {
+          id: "icons",
+          name: "Icons",
+          defaultIntegrations: {
+            node: "lucide-react"
+          }
+        }
+      ],
+      integrations: [reactIconsIntegration, lucideReactIntegration],
+      stacks: [
+        {
+          id: "next-standard",
+          name: "Next Standard",
+          capabilities: ["icons"]
+        }
+      ]
+    });
+
+    expect(
+      registry.resolveStack("next-standard", nextContext)?.integrations.map(
+        (integration) => integration.manifest.id
+      )
+    ).toEqual(["lucide-react"]);
+  });
+
+  it("detects conflicts for exclusive capabilities", () => {
+    const registry = new IntegrationRegistry({
+      capabilities: [
+        {
+          id: "state-management",
+          name: "State Management",
+          exclusive: true
+        }
+      ],
+      integrations: [nextIntegration, alternateStateIntegration]
+    });
+
+    expect(
+      registry.detectIntegrationConflicts([nextIntegration, alternateStateIntegration])
+    ).toEqual([
+      "Capability state-management is exclusive, but stack selects zustand, redux-toolkit."
+    ]);
+  });
+
+  it("detects installed alternatives for exclusive capabilities", async () => {
+    const registry = new IntegrationRegistry({
+      capabilities: [
+        {
+          id: "state-management",
+          name: "State Management",
+          exclusive: true
+        }
+      ],
+      integrations: [nextIntegration, installedAlternateStateIntegration]
+    });
+
+    await expect(
+      registry.findInstalledCapabilityConflicts(nextIntegration, nextContext)
+    ).resolves.toEqual([
+      "Detected existing state-management integration redux-toolkit with health healthy. Adding zustand may duplicate project architecture."
+    ]);
+  });
 });
 
 describe("manifest validation", () => {
@@ -118,7 +184,7 @@ describe("manifest validation", () => {
       })
     ).toEqual({
       valid: false,
-      errors: ["Stack must include at least one integration."]
+      errors: ["Stack must include at least one integration or capability."]
     });
   });
 });
@@ -135,6 +201,42 @@ const nextContext: ProjectContext = {
   packageManager: {
     id: "pnpm"
   }
+};
+
+const nextCompatibleIntegration: AvisIntegration["isCompatible"] = (context) =>
+  context.framework?.id === "nextjs"
+    ? { supported: true }
+    : { supported: false, reason: "Expected Next.js." };
+
+const unusedPlan: AvisIntegration["plan"] = async () => {
+  throw new Error("Not needed for registry tests.");
+};
+
+const alternateStateIntegration: AvisIntegration = {
+  manifest: {
+    id: "redux-toolkit",
+    name: "Redux Toolkit",
+    description: "State management.",
+    capability: "state-management",
+    version: "1.0.0",
+    status: "stable",
+    supports: {
+      ecosystems: ["node"],
+      frameworks: ["nextjs"]
+    }
+  },
+  isCompatible: nextCompatibleIntegration,
+  plan: unusedPlan
+};
+
+const installedAlternateStateIntegration: AvisIntegration = {
+  ...alternateStateIntegration,
+  verify: async () => ({
+    integrationId: "redux-toolkit",
+    health: "healthy",
+    checks: [],
+    diagnostics: []
+  })
 };
 
 const unknownNodeContext: ProjectContext = {
@@ -155,13 +257,8 @@ const nextIntegration: AvisIntegration = {
       frameworks: ["nextjs"]
     }
   },
-  isCompatible: (context) =>
-    context.framework?.id === "nextjs"
-      ? { supported: true }
-      : { supported: false, reason: "Expected Next.js." },
-  plan: async () => {
-    throw new Error("Not needed for registry tests.");
-  }
+  isCompatible: nextCompatibleIntegration,
+  plan: unusedPlan
 };
 
 const lucideReactIntegration: AvisIntegration = {
