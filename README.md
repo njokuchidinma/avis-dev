@@ -9,7 +9,13 @@ Framework scaffolders create the project. Avis equips it.
 ```txt
 $ npm install -g avis-dev@alpha
 $ cd my-next-app
-$ avis add state-management
+$ avis search icons
+
+Search results for "icons":
+- capability: icons (Icons) - Icon libraries and icon systems for application interfaces.
+- integration: lucide-react (Lucide React) - A consistent, tree-shakeable outline icon system for React interfaces.
+
+$ avis add icons
 
 Detected:
 Framework: nextjs
@@ -17,20 +23,19 @@ Language: typescript
 Ecosystem: node
 Package manager: pnpm
 
+Recommendation:
+Use lucide-react for icons.
+
 Avis will make these changes:
 
 Dependencies
-+ zustand
-Files
-+ src/stores/index.ts
++ lucide-react
 
 Apply changes? Yes
-OK Installed zustand.
-OK Created src/stores/index.ts.
+OK Installed lucide-react.
 
 Verification:
 OK dependency installed
-OK store detected
 ```
 
 ## Why Avis?
@@ -97,7 +102,8 @@ node path/to/avis-dev/packages/cli/dist/index.js
 
 ```sh
 cd my-next-app
-avis add state-management
+avis search icons
+avis add icons
 avis doctor
 ```
 
