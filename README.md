@@ -39,6 +39,16 @@ After `create-next-app`, `django-admin startproject`, `rails new`, `cargo new`, 
 
 Avis detects the project you already have, recommends compatible integrations, previews planned changes, asks before applying them, and verifies the result.
 
+Avis is capability-first. Prefer asking for the purpose:
+
+```sh
+avis add icons
+avis add validation
+avis add state-management
+```
+
+Avis can then recommend a compatible integration and show alternatives. Exact tool names such as `avis add lucide-react` still work when you already know what you want.
+
 ## Installation
 
 Install Avis once on your machine:
@@ -90,7 +100,7 @@ Review the ChangePlan before confirming.
 
 | Framework | Status | Integrations |
 | --- | --- | --- |
-| Next.js | Alpha | Zustand, TanStack Query, Zod, React Hook Form |
+| Next.js | Alpha | Zustand, TanStack Query, Zod, React Hook Form, Lucide React, React Icons, Heroicons React |
 | Django | Alpha | Django REST Framework |
 | Laravel | Experimental | Laravel Sanctum |
 | Flutter | Experimental | Flutter Riverpod |
@@ -106,6 +116,9 @@ Review the ChangePlan before confirming.
 - `laravel-sanctum`
 - `flutter-riverpod`
 - `rust-tracing`
+- `lucide-react`
+- `react-icons`
+- `heroicons-react`
 
 ## How Avis Works
 
@@ -123,7 +136,7 @@ existing project
 
 Before Avis changes a project, integrations generate a ChangePlan. Avis validates the plan and displays the dependency, file, configuration, or environment operations before asking for confirmation.
 
-For example, `avis add state-management` currently resolves to Zustand in compatible Next.js projects because Zustand is the only built-in state-management integration today. The public workflow stays capability-first while integration pages document the concrete tool Avis selects.
+For example, `avis add icons` in a compatible Next.js project recommends Lucide React and shows React Icons and Heroicons as alternatives. The public workflow stays capability-first while integration pages document the concrete tool Avis selects.
 
 ## Avis Doctor
 

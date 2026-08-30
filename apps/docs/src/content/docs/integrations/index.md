@@ -15,5 +15,8 @@ Official integrations currently included in Avis:
 | Laravel Sanctum | Authentication | Laravel | Experimental manifest, experimental project support |
 | Flutter Riverpod | State management | Flutter | Experimental manifest, experimental project support |
 | Rust tracing | Observability | Rust | Experimental manifest, experimental project support |
+| Lucide React | Icons | Next.js | Stable manifest, alpha project support |
+| React Icons | Icons | Next.js | Stable manifest, alpha project support |
+| Heroicons React | Icons | Next.js | Stable manifest, alpha project support |
 
 Each integration page documents what Avis may install, create, patch, and verify.

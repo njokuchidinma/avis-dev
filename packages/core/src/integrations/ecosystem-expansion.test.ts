@@ -5,12 +5,16 @@ import { describe, expect, it } from "vitest";
 import {
   createProjectContext,
   detectDartProject,
+  detectNodeProject,
   detectPhpProject,
   detectRustProject
 } from "../detection/index.js";
 import { applyChangePlan } from "../planning/apply.js";
 import { flutterRiverpodIntegration } from "./flutter-riverpod.js";
+import { heroiconsReactIntegration } from "./heroicons-react.js";
 import { laravelSanctumIntegration } from "./laravel-sanctum.js";
+import { lucideReactIntegration } from "./lucide-react.js";
+import { reactIconsIntegration } from "./react-icons.js";
 import { rustTracingIntegration } from "./rust-tracing.js";
 
 describe("V2 ecosystem integrations", () => {
@@ -129,6 +133,43 @@ tracing = "0.1"
     expect(plan.operations).toEqual([]);
     expect(verification?.health).toBe("healthy");
   });
+
+  it("plans icon integrations as alternative implementations of the icons capability", async () => {
+    const root = await createNextProject({
+      dependencies: {
+        next: "16.0.0"
+      }
+    });
+
+    const context = createProjectContext(await detectNodeProject(root));
+
+    await expect(lucideReactIntegration.plan({ context })).resolves.toMatchObject({
+      operations: [
+        {
+          id: "add-lucide-react",
+          type: "dependency.add",
+          packageManager: "pnpm",
+          packages: [{ name: "lucide-react" }]
+        }
+      ]
+    });
+    await expect(reactIconsIntegration.plan({ context })).resolves.toMatchObject({
+      operations: [
+        {
+          id: "add-react-icons",
+          packages: [{ name: "react-icons" }]
+        }
+      ]
+    });
+    await expect(heroiconsReactIntegration.plan({ context })).resolves.toMatchObject({
+      operations: [
+        {
+          id: "add-heroicons-react",
+          packages: [{ name: "@heroicons/react" }]
+        }
+      ]
+    });
+  });
 });
 
 async function createFlutterProject(pubspecBody: string): Promise<string> {
@@ -139,6 +180,21 @@ ${pubspecBody}`,
   });
   await mkdir(path.join(root, "lib"), { recursive: true });
   return root;
+}
+
+async function createNextProject(packageJson: Record<string, unknown>): Promise<string> {
+  return createTempProject({
+    "package.json": JSON.stringify(
+      {
+        name: "next-app",
+        packageManager: "pnpm@11.24.0",
+        ...packageJson
+      },
+      null,
+      2
+    ),
+    "pnpm-lock.yaml": ""
+  });
 }
 
 async function createTempProject(files: Record<string, string>): Promise<string> {

@@ -33,6 +33,9 @@ Current integrations:
 - TanStack Query
 - Zod
 - React Hook Form
+- Lucide React
+- React Icons
+- Heroicons React
 
 ## Django
 

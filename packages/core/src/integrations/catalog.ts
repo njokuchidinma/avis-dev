@@ -1,8 +1,12 @@
 import { flutterRiverpodIntegration } from "./flutter-riverpod.js";
 import { djangoRestFrameworkIntegration } from "./django-rest-framework.js";
+import { heroiconsReactIntegration } from "./heroicons-react.js";
 import { laravelSanctumIntegration } from "./laravel-sanctum.js";
+import { lucideReactIntegration } from "./lucide-react.js";
 import type { ProjectContext } from "../types/project-context.js";
+import { ecosystems } from "../types/ids.js";
 import { reactHookFormIntegration } from "./react-hook-form.js";
+import { reactIconsIntegration } from "./react-icons.js";
 import { rustTracingIntegration } from "./rust-tracing.js";
 import { tanstackQueryIntegration } from "./tanstack-query.js";
 import type { AvisIntegration, Capability } from "./types.js";
@@ -13,7 +17,13 @@ export const builtInCapabilities: Capability[] = [
   {
     id: "state-management",
     name: "State Management",
-    description: "Client-side application state."
+    description: "Client-side application state.",
+    aliases: ["state", "store", "stores"],
+    defaultIntegrations: {
+      [ecosystems.node]: "zustand",
+      [ecosystems.dart]: "flutter-riverpod"
+    },
+    exclusive: true
   },
   {
     id: "data-fetching",
@@ -33,7 +43,11 @@ export const builtInCapabilities: Capability[] = [
   {
     id: "validation",
     name: "Validation",
-    description: "Runtime schema validation."
+    description: "Runtime schema validation.",
+    aliases: ["schemas", "schema-validation"],
+    defaultIntegrations: {
+      [ecosystems.node]: "zod"
+    }
   },
   {
     id: "auth",
@@ -43,7 +57,20 @@ export const builtInCapabilities: Capability[] = [
   {
     id: "observability",
     name: "Observability",
-    description: "Logging, tracing, and error visibility."
+    description: "Logging, tracing, and error visibility.",
+    aliases: ["logging", "tracing"],
+    defaultIntegrations: {
+      [ecosystems.rust]: "rust-tracing"
+    }
+  },
+  {
+    id: "icons",
+    name: "Icons",
+    description: "Icon libraries and icon systems for application interfaces.",
+    aliases: ["icon", "icon-pack", "icon-system"],
+    defaultIntegrations: {
+      [ecosystems.node]: "lucide-react"
+    }
   }
 ];
 
@@ -55,7 +82,10 @@ export const builtInIntegrations: AvisIntegration[] = [
   zodIntegration,
   laravelSanctumIntegration,
   flutterRiverpodIntegration,
-  rustTracingIntegration
+  rustTracingIntegration,
+  lucideReactIntegration,
+  reactIconsIntegration,
+  heroiconsReactIntegration
 ];
 
 export function findIntegrationById(id: string): AvisIntegration | undefined {

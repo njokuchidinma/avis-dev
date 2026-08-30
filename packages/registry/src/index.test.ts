@@ -36,6 +36,51 @@ describe("IntegrationRegistry", () => {
       }
     ]);
   });
+
+  it("finds capabilities by aliases", () => {
+    const registry = new IntegrationRegistry({
+      capabilities: [
+        {
+          id: "icons",
+          name: "Icons",
+          aliases: ["icon", "icon-pack"]
+        }
+      ],
+      integrations: []
+    });
+
+    expect(registry.findCapabilityByQuery("icon")?.id).toBe("icons");
+    expect(registry.findCapabilityByQuery("Icon Pack")?.id).toBe("icons");
+  });
+
+  it("recommends the ecosystem default before alternatives", () => {
+    const registry = new IntegrationRegistry({
+      capabilities: [
+        {
+          id: "icons",
+          name: "Icons",
+          defaultIntegrations: {
+            node: "lucide-react"
+          }
+        }
+      ],
+      integrations: [reactIconsIntegration, lucideReactIntegration]
+    });
+
+    const recommendations = registry.recommendIntegrationsForCapability(
+      "icons",
+      nextContext
+    );
+
+    expect(recommendations.map((entry) => entry.integration.manifest.id)).toEqual([
+      "lucide-react",
+      "react-icons"
+    ]);
+    expect(recommendations[0]?.recommended).toBe(true);
+    expect(recommendations[0]?.reasons).toContain(
+      "default recommendation for this ecosystem"
+    );
+  });
 });
 
 describe("manifest validation", () => {
@@ -117,4 +162,42 @@ const nextIntegration: AvisIntegration = {
   plan: async () => {
     throw new Error("Not needed for registry tests.");
   }
+};
+
+const lucideReactIntegration: AvisIntegration = {
+  manifest: {
+    id: "lucide-react",
+    name: "Lucide React",
+    description: "Icons.",
+    capability: "icons",
+    version: "1.0.0",
+    status: "stable",
+    supports: {
+      ecosystems: ["node"],
+      frameworks: ["nextjs"]
+    },
+    dependencies: [{ name: "lucide-react", type: "runtime" }],
+    source: { owner: "avis" }
+  },
+  isCompatible: nextIntegration.isCompatible,
+  plan: nextIntegration.plan
+};
+
+const reactIconsIntegration: AvisIntegration = {
+  manifest: {
+    id: "react-icons",
+    name: "React Icons",
+    description: "Icons.",
+    capability: "icons",
+    version: "1.0.0",
+    status: "stable",
+    supports: {
+      ecosystems: ["node"],
+      frameworks: ["nextjs"]
+    },
+    dependencies: [{ name: "react-icons", type: "runtime" }],
+    source: { owner: "avis" }
+  },
+  isCompatible: nextIntegration.isCompatible,
+  plan: nextIntegration.plan
 };

@@ -14,6 +14,12 @@ export interface IntegrationSupportGroup {
   integrations: AvisIntegration[];
 }
 
+export interface IntegrationRecommendation {
+  integration: AvisIntegration;
+  recommended: boolean;
+  reasons: string[];
+}
+
 export interface StackManifest {
   id: string;
   name: string;
@@ -42,6 +48,14 @@ export class IntegrationRegistry {
     return this.capabilities.find((capability) => capability.id === id);
   }
 
+  findCapabilityByQuery(query: string): Capability | undefined {
+    const normalizedQuery = normalizeIdentifier(query);
+    return this.capabilities.find((capability) => {
+      const candidates = [capability.id, capability.name, ...(capability.aliases ?? [])];
+      return candidates.some((candidate) => normalizeIdentifier(candidate) === normalizedQuery);
+    });
+  }
+
   findIntegrationById(id: string): AvisIntegration | undefined {
     return this.integrations.find((integration) => integration.manifest.id === id);
   }
@@ -59,6 +73,28 @@ export class IntegrationRegistry {
     return this.findCompatibleIntegrations(context).filter(
       (integration) => integration.manifest.capability === capabilityId
     );
+  }
+
+  recommendIntegrationsForCapability(
+    capabilityId: string,
+    context: ProjectContext
+  ): IntegrationRecommendation[] {
+    const capability = this.findCapabilityByQuery(capabilityId);
+    const integrations = this.findCompatibleIntegrationsForCapability(
+      capability?.id ?? capabilityId,
+      context
+    );
+    const defaultIntegrationId = context.ecosystem
+      ? capability?.defaultIntegrations?.[context.ecosystem]
+      : undefined;
+
+    return integrations
+      .map((integration) => ({
+        integration,
+        recommended: integration.manifest.id === defaultIntegrationId,
+        reasons: getRecommendationReasons(integration, context, defaultIntegrationId)
+      }))
+      .sort(compareRecommendations);
   }
 
   getSupportGroups(): IntegrationSupportGroup[] {
@@ -88,6 +124,66 @@ export class IntegrationRegistry {
       formatSupportGroupLabel(left).localeCompare(formatSupportGroupLabel(right))
     );
   }
+}
+
+function getRecommendationReasons(
+  integration: AvisIntegration,
+  context: ProjectContext,
+  defaultIntegrationId: string | undefined
+): string[] {
+  const reasons = [
+    `compatible with ${context.framework?.id ?? context.ecosystem}`,
+    `${formatStatusLabel(integration.manifest.status)} integration`
+  ];
+
+  if (integration.manifest.id === defaultIntegrationId) {
+    reasons.unshift("default recommendation for this ecosystem");
+  }
+
+  if (integration.manifest.source?.owner === "avis") {
+    reasons.push("maintained by Avis");
+  }
+
+  if (integration.manifest.dependencies && integration.manifest.dependencies.length > 0) {
+    reasons.push("adds a native project dependency");
+  }
+
+  return reasons;
+}
+
+function compareRecommendations(
+  left: IntegrationRecommendation,
+  right: IntegrationRecommendation
+): number {
+  if (left.recommended !== right.recommended) {
+    return left.recommended ? -1 : 1;
+  }
+
+  const statusRank = { stable: 0, experimental: 1, deprecated: 2 };
+  const statusDifference =
+    statusRank[left.integration.manifest.status] -
+    statusRank[right.integration.manifest.status];
+
+  if (statusDifference !== 0) {
+    return statusDifference;
+  }
+
+  return left.integration.manifest.name.localeCompare(right.integration.manifest.name);
+}
+
+function formatStatusLabel(status: AvisIntegrationManifest["status"]): string {
+  switch (status) {
+    case "stable":
+      return "stable";
+    case "experimental":
+      return "experimental";
+    case "deprecated":
+      return "deprecated";
+  }
+}
+
+function normalizeIdentifier(value: string): string {
+  return value.trim().toLowerCase().replaceAll("_", "-").replace(/\s+/g, "-");
 }
 
 export function createIntegrationRegistry(options: {

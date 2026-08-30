@@ -18,6 +18,7 @@ import {
 import {
   createIntegrationRegistry,
   formatSupportGroupLabel,
+  type IntegrationRecommendation,
   type IntegrationRegistry
 } from "@avis/registry";
 
@@ -83,7 +84,6 @@ async function runAdd(subject: string): Promise<void> {
   const integration = await resolveIntegration(subject, context, registry);
 
   if (!integration) {
-    process.exitCode = 1;
     return;
   }
 
@@ -118,6 +118,7 @@ async function runAddInteractive(): Promise<void> {
   console.log("  avis add api");
   console.log("  avis add auth");
   console.log("  avis add observability");
+  console.log("  avis add icons");
   console.log("  avis add zustand");
 }
 
@@ -148,42 +149,55 @@ async function resolveIntegration(
     if (!compatibility.supported) {
       console.error(compatibility.reason);
       printSupportedTargets(integrationRegistry);
+      process.exitCode = 1;
       return undefined;
     }
 
     return directIntegration;
   }
 
-  const capability = integrationRegistry.findCapabilityById(subject);
+  const capability = integrationRegistry.findCapabilityByQuery(subject);
   if (!capability) {
     console.error(`Unknown integration or capability: ${subject}`);
     printKnownCommands();
+    process.exitCode = 1;
     return undefined;
   }
 
-  const compatible = integrationRegistry.findCompatibleIntegrationsForCapability(
+  const recommendations = integrationRegistry.recommendIntegrationsForCapability(
     capability.id,
     context
   );
-  if (compatible.length === 1) {
-    return compatible[0];
+  if (recommendations.length === 1) {
+    return recommendations[0]?.integration;
   }
 
-  if (compatible.length === 0) {
+  if (recommendations.length === 0) {
     console.error(
       `No compatible ${capability.name} integrations are available for this project yet.`
     );
     printSupportedTargets(integrationRegistry);
+    process.exitCode = 1;
     return undefined;
   }
 
-  console.log(`${capability.name} integrations:`);
-  for (const integration of compatible) {
-    console.log(`- ${integration.manifest.id} (${integration.manifest.name})`);
+  printCapabilityRecommendations(capability.name, recommendations);
+
+  const recommended = recommendations[0];
+  if (!recommended) {
+    return undefined;
   }
+
+  const confirmed = await confirm(
+    `Use recommended integration ${recommended.integration.manifest.id}?`
+  );
+  if (confirmed) {
+    return recommended.integration;
+  }
+
   console.log("");
   console.log(
-    `Run avis add <integration>, for example: avis add ${compatible[0]?.manifest.id}`
+    `Run avis add <integration>, for example: avis add ${recommended.integration.manifest.id}`
   );
   return undefined;
 }
@@ -330,7 +344,7 @@ function printShow(subject: string): void {
     return;
   }
 
-  const capability = registry.findCapabilityById(subject);
+  const capability = registry.findCapabilityByQuery(subject);
   if (capability) {
     const integrations = registry.integrations.filter(
       (candidate) => candidate.manifest.capability === capability.id
@@ -430,6 +444,26 @@ function printSupportedTargets(integrationRegistry: IntegrationRegistry): void {
       .join(", ");
     console.log(`- ${formatSupportGroupLabel(group)}: ${integrations}`);
   }
+}
+
+function printCapabilityRecommendations(
+  capabilityName: string,
+  recommendations: IntegrationRecommendation[]
+): void {
+  console.log(`${capabilityName} integrations:`);
+  for (const [index, recommendation] of recommendations.entries()) {
+    const marker = recommendation.recommended || index === 0 ? "recommended" : "alternative";
+    console.log("");
+    console.log(`${index + 1}. ${recommendation.integration.manifest.name} (${marker})`);
+    console.log(`   ID: ${recommendation.integration.manifest.id}`);
+    console.log(`   ${recommendation.integration.manifest.description}`);
+    console.log("   Why:");
+    for (const reason of recommendation.reasons) {
+      console.log(`   - ${reason}`);
+    }
+  }
+  console.log("");
+  console.log(`Recommended: ${recommendations[0]?.integration.manifest.id}`);
 }
 
 function formatDetectedProject(context: ProjectContext): string {

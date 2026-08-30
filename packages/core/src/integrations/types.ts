@@ -13,6 +13,9 @@ export interface Capability {
   id: CapabilityId;
   name: string;
   description?: string;
+  aliases?: string[];
+  defaultIntegrations?: Partial<Record<EcosystemId, IntegrationId>>;
+  exclusive?: boolean;
 }
 
 export interface IntegrationSupport {
