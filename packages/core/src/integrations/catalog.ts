@@ -1,6 +1,9 @@
+import { flutterRiverpodIntegration } from "./flutter-riverpod.js";
 import { djangoRestFrameworkIntegration } from "./django-rest-framework.js";
+import { laravelSanctumIntegration } from "./laravel-sanctum.js";
 import type { ProjectContext } from "../types/project-context.js";
 import { reactHookFormIntegration } from "./react-hook-form.js";
+import { rustTracingIntegration } from "./rust-tracing.js";
 import { tanstackQueryIntegration } from "./tanstack-query.js";
 import type { AvisIntegration, Capability } from "./types.js";
 import { zodIntegration } from "./zod.js";
@@ -31,6 +34,16 @@ export const builtInCapabilities: Capability[] = [
     id: "validation",
     name: "Validation",
     description: "Runtime schema validation."
+  },
+  {
+    id: "auth",
+    name: "Authentication",
+    description: "Authentication and API access control."
+  },
+  {
+    id: "observability",
+    name: "Observability",
+    description: "Logging, tracing, and error visibility."
   }
 ];
 
@@ -39,7 +52,10 @@ export const builtInIntegrations: AvisIntegration[] = [
   tanstackQueryIntegration,
   djangoRestFrameworkIntegration,
   reactHookFormIntegration,
-  zodIntegration
+  zodIntegration,
+  laravelSanctumIntegration,
+  flutterRiverpodIntegration,
+  rustTracingIntegration
 ];
 
 export function findIntegrationById(id: string): AvisIntegration | undefined {

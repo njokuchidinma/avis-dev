@@ -116,6 +116,8 @@ async function runAddInteractive(): Promise<void> {
   console.log("  avis add forms");
   console.log("  avis add validation");
   console.log("  avis add api");
+  console.log("  avis add auth");
+  console.log("  avis add observability");
   console.log("  avis add zustand");
 }
 

@@ -92,6 +92,9 @@ Review the ChangePlan before confirming.
 | --- | --- | --- |
 | Next.js | Alpha | Zustand, TanStack Query, Zod, React Hook Form |
 | Django | Alpha | Django REST Framework |
+| Laravel | Experimental | Laravel Sanctum |
+| Flutter | Experimental | Flutter Riverpod |
+| Rust | Experimental | Rust tracing |
 
 ## Current Integrations
 
@@ -100,6 +103,9 @@ Review the ChangePlan before confirming.
 - `zod`
 - `react-hook-form`
 - `django-rest-framework`
+- `laravel-sanctum`
+- `flutter-riverpod`
+- `rust-tracing`
 
 ## How Avis Works
 
