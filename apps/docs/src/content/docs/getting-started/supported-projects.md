@@ -30,9 +30,13 @@ Supported package managers:
 Current integrations:
 
 - Zustand
+- Redux Toolkit
 - TanStack Query
 - Zod
 - React Hook Form
+- Lucide React
+- React Icons
+- Heroicons React
 
 ## Django
 
@@ -56,6 +60,69 @@ Supported package managers:
 Current integration:
 
 - Django REST Framework
+
+## Laravel
+
+Status: experimental
+
+Detected through:
+
+- `composer.json`
+- `laravel/framework` dependency
+- `artisan`
+
+Supported language:
+
+- PHP
+
+Supported package manager:
+
+- Composer
+
+Current integration:
+
+- Laravel Sanctum
+
+## Flutter
+
+Status: experimental
+
+Detected through:
+
+- `pubspec.yaml`
+- Flutter SDK dependency or Flutter configuration section
+
+Supported language:
+
+- Dart
+
+Supported package manager:
+
+- Dart pub
+
+Current integration:
+
+- Flutter Riverpod
+
+## Rust
+
+Status: experimental
+
+Detected through:
+
+- `Cargo.toml`
+
+Supported language:
+
+- Rust
+
+Supported package manager:
+
+- Cargo
+
+Current integration:
+
+- Rust tracing
 
 ## Roadmap Signals
 

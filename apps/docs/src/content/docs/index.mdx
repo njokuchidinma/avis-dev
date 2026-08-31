@@ -23,7 +23,13 @@ Framework scaffolders create the project. Avis equips it.
 ```txt
 $ npm install -g avis-dev@alpha
 $ cd my-next-app
-$ avis add state-management
+$ avis search icons
+
+Search results for "icons":
+- capability: icons (Icons) - Icon libraries and icon systems for application interfaces.
+- integration: lucide-react (Lucide React) - A consistent, tree-shakeable outline icon system for React interfaces.
+
+$ avis add icons
 
 Detected:
 Framework: nextjs
@@ -31,29 +37,28 @@ Language: typescript
 Ecosystem: node
 Package manager: pnpm
 
+Recommendation:
+Use lucide-react for icons.
+
 Avis will make these changes:
 
 Dependencies
-+ zustand
-Files
-+ src/stores/index.ts
++ lucide-react
 
 Apply changes? Yes
-OK Installed zustand.
-OK Created src/stores/index.ts.
+OK Installed lucide-react.
 
 Verification:
 OK dependency installed
-OK store detected
 ```
 
 ## Why Avis Exists
 
 After `create-next-app`, `django-admin startproject`, `rails new`, `cargo new`, `dotnet new`, or another framework initializer, developers still repeat the same setup work: state management, data fetching, forms, validation, API tooling, testing, monitoring, storage, background jobs, and more.
 
-Avis starts after project initialization. It detects the project you already have, recommends compatible integrations, previews a ChangePlan, asks before applying changes, and then verifies the result.
+Avis starts after project initialization. It detects the project you already have, lets you ask for a purpose such as `icons`, `validation`, or `state-management`, recommends compatible integrations, previews a ChangePlan, asks before applying changes, and then verifies the result.
 
-The public path is capability-first. In the current Next.js alpha, `avis add state-management` resolves to Zustand because it is the only built-in compatible state-management integration.
+The public path is capability-first. You do not need to know whether the right command is `avis add lucide-react`, `avis add react-icons`, or `avis add heroicons-react`; start with `avis add icons` and let Avis show the recommendation and alternatives.
 
 ## How Avis Works
 
@@ -76,10 +81,19 @@ The public path is capability-first. In the current Next.js alpha, `avis add sta
 
 <CardGrid>
 	<Card title="Next.js" icon="seti:javascript">
-		Status: alpha. Current integrations: Zustand, TanStack Query, Zod, and React Hook Form.
+		Status: alpha. Current integrations: Zustand, Redux Toolkit, TanStack Query, Zod, React Hook Form, Lucide React, React Icons, and Heroicons React.
 	</Card>
 	<Card title="Django" icon="seti:python">
 		Status: alpha. Current integration: Django REST Framework.
+	</Card>
+	<Card title="Laravel" icon="seti:php">
+		Status: experimental. Current integration: Laravel Sanctum.
+	</Card>
+	<Card title="Flutter" icon="seti:dart">
+		Status: experimental. Current integration: Flutter Riverpod.
+	</Card>
+	<Card title="Rust" icon="seti:rust">
+		Status: experimental. Current integration: Rust tracing.
 	</Card>
 </CardGrid>
 

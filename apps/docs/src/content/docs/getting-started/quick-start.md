@@ -31,18 +31,25 @@ Avis detects the project and prints compatible capabilities.
 
 ## 4. Add a Capability
 
+Search when you know the purpose but not the package:
+
+```sh
+avis search icons
+avis show icons
+```
+
 Add a capability:
 
 ```sh
-avis add state-management
+avis add icons
 ```
 
-In the current Next.js alpha, state management resolves to Zustand because it is the only built-in compatible state-management integration.
+In the current Next.js alpha, icons resolves to Lucide React by default and shows React Icons and Heroicons React as alternatives.
 
-If more than one integration is compatible for a capability, Avis lists them and asks you to run a concrete integration command:
+If you already know the exact integration you want, concrete integration commands still work:
 
 ```sh
-avis add zustand
+avis add lucide-react
 ```
 
 ## 5. Review the ChangePlan
@@ -53,9 +60,7 @@ Avis prints the changes before applying them:
 Avis will make these changes:
 
 Dependencies
-+ zustand
-Files
-+ src/stores/index.ts
++ lucide-react
 ```
 
 ## 6. Confirm

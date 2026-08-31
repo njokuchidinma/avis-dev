@@ -36,6 +36,145 @@ describe("IntegrationRegistry", () => {
       }
     ]);
   });
+
+  it("finds capabilities by aliases", () => {
+    const registry = new IntegrationRegistry({
+      capabilities: [
+        {
+          id: "icons",
+          name: "Icons",
+          aliases: ["icon", "icon-pack"]
+        }
+      ],
+      integrations: []
+    });
+
+    expect(registry.findCapabilityByQuery("icon")?.id).toBe("icons");
+    expect(registry.findCapabilityByQuery("Icon Pack")?.id).toBe("icons");
+  });
+
+  it("recommends the ecosystem default before alternatives", () => {
+    const registry = new IntegrationRegistry({
+      capabilities: [
+        {
+          id: "icons",
+          name: "Icons",
+          defaultIntegrations: {
+            node: "lucide-react"
+          }
+        }
+      ],
+      integrations: [reactIconsIntegration, lucideReactIntegration]
+    });
+
+    const recommendations = registry.recommendIntegrationsForCapability(
+      "icons",
+      nextContext
+    );
+
+    expect(recommendations.map((entry) => entry.integration.manifest.id)).toEqual([
+      "lucide-react",
+      "react-icons"
+    ]);
+    expect(recommendations[0]?.recommended).toBe(true);
+    expect(recommendations[0]?.reasons).toContain(
+      "default recommendation for this ecosystem"
+    );
+  });
+
+  it("resolves stacks through capability recommendations", () => {
+    const registry = new IntegrationRegistry({
+      capabilities: [
+        {
+          id: "icons",
+          name: "Icons",
+          defaultIntegrations: {
+            node: "lucide-react"
+          }
+        }
+      ],
+      integrations: [reactIconsIntegration, lucideReactIntegration],
+      stacks: [
+        {
+          id: "next-standard",
+          name: "Next Standard",
+          capabilities: ["icons"]
+        }
+      ]
+    });
+
+    expect(
+      registry.resolveStack("next-standard", nextContext)?.integrations.map(
+        (integration) => integration.manifest.id
+      )
+    ).toEqual(["lucide-react"]);
+  });
+
+  it("detects conflicts for exclusive capabilities", () => {
+    const registry = new IntegrationRegistry({
+      capabilities: [
+        {
+          id: "state-management",
+          name: "State Management",
+          exclusive: true
+        }
+      ],
+      integrations: [nextIntegration, alternateStateIntegration]
+    });
+
+    expect(
+      registry.detectIntegrationConflicts([nextIntegration, alternateStateIntegration])
+    ).toEqual([
+      "Capability state-management is exclusive, but stack selects zustand, redux-toolkit."
+    ]);
+  });
+
+  it("detects installed alternatives for exclusive capabilities", async () => {
+    const registry = new IntegrationRegistry({
+      capabilities: [
+        {
+          id: "state-management",
+          name: "State Management",
+          exclusive: true
+        }
+      ],
+      integrations: [nextIntegration, installedAlternateStateIntegration]
+    });
+
+    await expect(
+      registry.findInstalledCapabilityConflicts(nextIntegration, nextContext)
+    ).resolves.toEqual([
+      "Detected existing state-management integration redux-toolkit with health healthy. Adding zustand may duplicate project architecture."
+    ]);
+  });
+
+  it("searches capabilities, integrations, and stacks", () => {
+    const registry = new IntegrationRegistry({
+      capabilities: [
+        {
+          id: "icons",
+          name: "Icons",
+          aliases: ["icon-pack"]
+        }
+      ],
+      integrations: [lucideReactIntegration],
+      stacks: [
+        {
+          id: "next-standard",
+          name: "Next Standard",
+          description: "Common Next.js app capabilities.",
+          capabilities: ["icons"]
+        }
+      ]
+    });
+
+    expect(registry.search("icon").map((result) => `${result.kind}:${result.id}`)).toEqual([
+      "capability:icons",
+      "integration:lucide-react",
+      "stack:next-standard"
+    ]);
+    expect(registry.search("icon package")[0]?.id).toBe("icons");
+  });
 });
 
 describe("manifest validation", () => {
@@ -48,6 +187,7 @@ describe("manifest validation", () => {
         capability: "",
         version: "",
         status: "stable",
+        trust: "official",
         supports: {
           ecosystems: []
         }
@@ -73,7 +213,7 @@ describe("manifest validation", () => {
       })
     ).toEqual({
       valid: false,
-      errors: ["Stack must include at least one integration."]
+      errors: ["Stack must include at least one integration or capability."]
     });
   });
 });
@@ -92,6 +232,43 @@ const nextContext: ProjectContext = {
   }
 };
 
+const nextCompatibleIntegration: AvisIntegration["isCompatible"] = (context) =>
+  context.framework?.id === "nextjs"
+    ? { supported: true }
+    : { supported: false, reason: "Expected Next.js." };
+
+const unusedPlan: AvisIntegration["plan"] = async () => {
+  throw new Error("Not needed for registry tests.");
+};
+
+const alternateStateIntegration: AvisIntegration = {
+  manifest: {
+    id: "redux-toolkit",
+    name: "Redux Toolkit",
+    description: "State management.",
+    capability: "state-management",
+    version: "1.0.0",
+    status: "stable",
+    trust: "official",
+    supports: {
+      ecosystems: ["node"],
+      frameworks: ["nextjs"]
+    }
+  },
+  isCompatible: nextCompatibleIntegration,
+  plan: unusedPlan
+};
+
+const installedAlternateStateIntegration: AvisIntegration = {
+  ...alternateStateIntegration,
+  verify: async () => ({
+    integrationId: "redux-toolkit",
+    health: "healthy",
+    checks: [],
+    diagnostics: []
+  })
+};
+
 const unknownNodeContext: ProjectContext = {
   ...nextContext,
   framework: undefined
@@ -105,16 +282,52 @@ const nextIntegration: AvisIntegration = {
     capability: "state-management",
     version: "1.0.0",
     status: "stable",
+    trust: "official",
     supports: {
       ecosystems: ["node"],
       frameworks: ["nextjs"]
     }
   },
-  isCompatible: (context) =>
-    context.framework?.id === "nextjs"
-      ? { supported: true }
-      : { supported: false, reason: "Expected Next.js." },
-  plan: async () => {
-    throw new Error("Not needed for registry tests.");
-  }
+  isCompatible: nextCompatibleIntegration,
+  plan: unusedPlan
+};
+
+const lucideReactIntegration: AvisIntegration = {
+  manifest: {
+    id: "lucide-react",
+    name: "Lucide React",
+    description: "Icons.",
+    capability: "icons",
+    version: "1.0.0",
+    status: "stable",
+    trust: "official",
+    supports: {
+      ecosystems: ["node"],
+      frameworks: ["nextjs"]
+    },
+    dependencies: [{ name: "lucide-react", type: "runtime" }],
+    source: { owner: "avis" }
+  },
+  isCompatible: nextIntegration.isCompatible,
+  plan: nextIntegration.plan
+};
+
+const reactIconsIntegration: AvisIntegration = {
+  manifest: {
+    id: "react-icons",
+    name: "React Icons",
+    description: "Icons.",
+    capability: "icons",
+    version: "1.0.0",
+    status: "stable",
+    trust: "official",
+    supports: {
+      ecosystems: ["node"],
+      frameworks: ["nextjs"]
+    },
+    dependencies: [{ name: "react-icons", type: "runtime" }],
+    source: { owner: "avis" }
+  },
+  isCompatible: nextIntegration.isCompatible,
+  plan: nextIntegration.plan
 };

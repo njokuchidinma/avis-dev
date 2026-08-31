@@ -13,6 +13,9 @@ export interface Capability {
   id: CapabilityId;
   name: string;
   description?: string;
+  aliases?: string[];
+  defaultIntegrations?: Partial<Record<EcosystemId, IntegrationId>>;
+  exclusive?: boolean;
 }
 
 export interface IntegrationSupport {
@@ -22,6 +25,11 @@ export interface IntegrationSupport {
 }
 
 export type IntegrationStatus = "experimental" | "stable" | "deprecated";
+export type IntegrationTrustLevel =
+  | "official"
+  | "verified"
+  | "community"
+  | "experimental";
 
 export interface IntegrationDependencyRequirement {
   name: string;
@@ -46,6 +54,7 @@ export interface AvisIntegrationManifest {
   capability: CapabilityId;
   version: string;
   status: IntegrationStatus;
+  trust: IntegrationTrustLevel;
   supports: IntegrationSupport;
   dependencies?: IntegrationDependencyRequirement[];
   configures?: string[];

@@ -1,22 +1,31 @@
 import type { DetectionResult } from "./types.js";
+import { detectDartProject } from "./dart.js";
 import { detectNodeProject } from "./node.js";
+import { detectPhpProject } from "./php.js";
 import { detectPythonProject } from "./python.js";
+import { detectRustProject } from "./rust.js";
 
 export async function detectProject(root: string): Promise<DetectionResult> {
-  const nodeResult = await detectNodeProject(root);
-  if (nodeResult.targets.length > 0) {
-    return nodeResult;
+  const results = await Promise.all([
+    detectNodeProject(root),
+    detectPythonProject(root),
+    detectPhpProject(root),
+    detectDartProject(root),
+    detectRustProject(root)
+  ]);
+
+  for (const result of results) {
+    if (result.targets.length > 0) {
+      return result;
+    }
   }
 
-  const pythonResult = await detectPythonProject(root);
-  if (pythonResult.targets.length > 0) {
-    return pythonResult;
-  }
+  const diagnostics = results.flatMap((result) => result.diagnostics);
 
   return {
     root,
     targets: [],
     evidence: [],
-    diagnostics: [...nodeResult.diagnostics, ...pythonResult.diagnostics]
+    diagnostics
   };
 }

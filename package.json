@@ -15,7 +15,7 @@
   "engines": {
     "node": ">=20.0.0"
   },
-  "homepage": "https://njokuchidinma.github.io/avis-dev",
+  "homepage": "https://avis-dev.vercel.app/",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/njokuchidinma/avis-dev.git"
@@ -30,13 +30,17 @@
   "scripts": {
     "avis": "node packages/cli/dist/index.js",
     "build": "pnpm build:workspace && pnpm build:package && pnpm docs:build",
+    "build:native-manifest": "node scripts/generate-native-manifest.mjs",
     "build:package": "tsup packages/cli/src/index.ts --format esm --platform node --target node20 --no-splitting --sourcemap --clean --out-dir dist",
     "build:workspace": "pnpm --filter @avis/core --filter @avis/registry --filter @avis/cli build",
     "docs:build": "pnpm --filter @avis/docs build",
+    "docs:generate-registry": "tsx scripts/generate-registry-docs.ts",
     "docs:dev": "pnpm --filter @avis/docs dev",
     "docs:preview": "pnpm --filter @avis/docs preview",
     "pack:dry-run": "npm pack --dry-run",
     "prepack": "pnpm build:package",
+    "prepublishOnly": "pnpm typecheck && pnpm test",
+    "release:check": "pnpm docs:generate-registry && pnpm build:native-manifest && pnpm typecheck && pnpm test && pnpm build && npm pack --dry-run",
     "test:manual:drf": "bash scripts/manual-drf-test.sh",
     "test:manual:next": "bash scripts/manual-next-addon-test.sh",
     "test:manual:query": "bash scripts/manual-query-test.sh",

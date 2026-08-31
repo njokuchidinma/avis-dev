@@ -15,6 +15,7 @@ Start here:
 - [Repository Architecture](/contributing/repository-architecture/)
 - [Building Avis Locally](/contributing/building-avis-locally/)
 - [Testing](/contributing/testing/)
+- [npm Release Checklist](/contributing/npm-release/)
 - [Creating an Integration](/contributing/creating-an-integration/)
 - [Integration Requirements](/contributing/integration-requirements/)
 - [Pull Request Guide](/contributing/pull-request-guide/)

@@ -1,14 +1,19 @@
 #!/usr/bin/env node
+import { access, mkdir, writeFile } from "node:fs/promises";
+import path from "node:path";
 import { createInterface } from "node:readline/promises";
 import { stdin as input, stdout as output } from "node:process";
 import {
   applyChangePlan,
   builtInCapabilities,
   builtInIntegrations,
+  composeChangePlans,
   createProjectContext,
   detectProject,
   formatChangePlan,
   isEmptyChangePlan,
+  recordAppliedIntegrationPlan,
+  readAvisProjectState,
   runPackageManagerCommand,
   validateChangePlan,
   type AvisIntegration,
@@ -18,12 +23,30 @@ import {
 import {
   createIntegrationRegistry,
   formatSupportGroupLabel,
-  type IntegrationRegistry
+  type IntegrationRecommendation,
+  type IntegrationRegistry,
+  type StackManifest
 } from "@avis/registry";
+
+const builtInStacks: StackManifest[] = [
+  {
+    id: "next-standard",
+    name: "Next Standard",
+    description: "Common Next.js application capabilities.",
+    capabilities: [
+      "state-management",
+      "data-fetching",
+      "validation",
+      "forms",
+      "icons"
+    ]
+  }
+];
 
 const registry = createIntegrationRegistry({
   capabilities: builtInCapabilities,
-  integrations: builtInIntegrations
+  integrations: builtInIntegrations,
+  stacks: builtInStacks
 });
 
 interface DoctorEntry {
@@ -31,9 +54,17 @@ interface DoctorEntry {
   verification: VerificationResult;
 }
 
+interface CliOptions {
+  yes: boolean;
+  dryRun: boolean;
+  json: boolean;
+  strict: boolean;
+}
+
 export async function runCli(argv = process.argv.slice(2)): Promise<void> {
   const args = argv[0] === "--" ? argv.slice(1) : argv;
-  const [command, subject] = args;
+  const { positionals, options } = parseArgs(args);
+  const [command, subject] = positionals;
 
   if (!command) {
     await runAddInteractive();
@@ -41,12 +72,23 @@ export async function runCli(argv = process.argv.slice(2)): Promise<void> {
   }
 
   if (command === "add" && subject) {
-    await runAdd(subject);
+    await runAdd(subject, options);
     return;
   }
 
   if (command === "add") {
     await runAddInteractive();
+    return;
+  }
+
+  if (command === "repair" && subject) {
+    await runRepair(subject, options);
+    return;
+  }
+
+  if (command === "repair") {
+    console.error("Usage: avis repair <integration|capability>");
+    process.exitCode = 1;
     return;
   }
 
@@ -67,27 +109,279 @@ export async function runCli(argv = process.argv.slice(2)): Promise<void> {
   }
 
   if (command === "doctor") {
-    await runDoctor();
+    await runDoctor(options);
+    return;
+  }
+
+  if (command === "search" && subject) {
+    printSearch(positionals.slice(1).join(" "));
+    return;
+  }
+
+  if (command === "search") {
+    console.error("Usage: avis search <query>");
+    process.exitCode = 1;
+    return;
+  }
+
+  if (command === "stack") {
+    await runStack(subject, positionals[2], options);
+    return;
+  }
+
+  if (command === "integration") {
+    await runIntegrationCommand(subject, positionals[2]);
     return;
   }
 
   printHelp();
 }
 
-async function runAdd(subject: string): Promise<void> {
+async function runIntegrationCommand(
+  action: string | undefined,
+  integrationId: string | undefined
+): Promise<void> {
+  if (action !== "create" || !integrationId) {
+    console.error("Usage: avis integration create <integration-id>");
+    process.exitCode = 1;
+    return;
+  }
+
+  await scaffoldIntegration(integrationId);
+}
+
+async function scaffoldIntegration(integrationId: string): Promise<void> {
+  if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(integrationId)) {
+    console.error("Integration id must use lowercase kebab-case.");
+    process.exitCode = 1;
+    return;
+  }
+
+  const root = path.join(process.cwd(), integrationId);
+  if (await pathExists(root)) {
+    console.error(`Refusing to overwrite existing path: ${integrationId}`);
+    process.exitCode = 1;
+    return;
+  }
+
+  await mkdir(path.join(root, "fixtures"), { recursive: true });
+  await mkdir(path.join(root, "tests"), { recursive: true });
+  await writeFile(path.join(root, "manifest.ts"), createManifestTemplate(integrationId), "utf8");
+  await writeFile(path.join(root, "plan.ts"), createPlanTemplate(integrationId), "utf8");
+  await writeFile(path.join(root, "verify.ts"), createVerifyTemplate(integrationId), "utf8");
+  await writeFile(path.join(root, "fixtures/.gitkeep"), "", "utf8");
+  await writeFile(path.join(root, "tests/integration.test.ts"), createTestTemplate(integrationId), "utf8");
+  await writeFile(path.join(root, "README.md"), createIntegrationReadme(integrationId), "utf8");
+
+  console.log(`Created integration scaffold at ${integrationId}`);
+}
+
+async function runStack(
+  action: string | undefined,
+  stackId: string | undefined,
+  options: CliOptions
+): Promise<void> {
+  switch (action) {
+    case "list":
+      printStackList();
+      return;
+
+    case "show":
+      if (!stackId) {
+        console.error("Usage: avis stack show <stack>");
+        process.exitCode = 1;
+        return;
+      }
+      printStackShow(stackId);
+      return;
+
+    case "use":
+      if (!stackId) {
+        console.error("Usage: avis stack use <stack>");
+        process.exitCode = 1;
+        return;
+      }
+      await runStackUse(stackId, options);
+      return;
+
+    default:
+      console.error("Usage: avis stack <list|show|use>");
+      process.exitCode = 1;
+  }
+}
+
+function printStackList(): void {
+  console.log("Stacks:");
+  for (const stack of registry.stacks) {
+    console.log(`- ${stack.id}: ${stack.name}`);
+  }
+}
+
+function printStackShow(stackId: string): void {
+  const stack = registry.findStackById(stackId);
+  if (!stack) {
+    console.error(`Unknown stack: ${stackId}`);
+    process.exitCode = 1;
+    return;
+  }
+
+  console.log(stack.name);
+  if (stack.description) {
+    console.log(stack.description);
+  }
+  console.log("");
+  console.log("Capabilities:");
+  for (const capability of stack.capabilities ?? []) {
+    console.log(`- ${capability}`);
+  }
+  console.log("");
+  console.log("Pinned integrations:");
+  const pinnedIntegrations = stack.integrations ?? [];
+  if (pinnedIntegrations.length === 0) {
+    console.log("- none");
+  }
+  for (const integration of pinnedIntegrations) {
+    console.log(`- ${integration}`);
+  }
+}
+
+async function runStackUse(stackId: string, options: CliOptions): Promise<void> {
   const context = await detectSingleProjectContext();
   if (!context) {
     return;
   }
 
-  const integration = await resolveIntegration(subject, context, registry);
-
-  if (!integration) {
+  const stack = registry.findStackById(stackId);
+  if (!stack) {
+    console.error(`Unknown stack: ${stackId}`);
     process.exitCode = 1;
     return;
   }
 
-  await planConfirmApplyAndVerify(integration, context);
+  const resolved = registry.resolveStack(stack.id, context);
+  if (!resolved) {
+    console.error(`Unknown stack: ${stackId}`);
+    process.exitCode = 1;
+    return;
+  }
+
+  if (resolved.diagnostics.length > 0) {
+    console.error("Avis cannot use this stack:");
+    for (const diagnostic of resolved.diagnostics) {
+      console.error(`- ${diagnostic}`);
+    }
+    process.exitCode = 1;
+    return;
+  }
+
+  const plans = await Promise.all(
+    resolved.integrations.map((integration) => integration.plan({ context }))
+  );
+  const plan = composeChangePlans(plans, {
+    id: `stack:${stack.id}`,
+    title: `Use ${stack.name}`,
+    integrationId: `stack:${stack.id}`,
+    target: context
+  });
+  const validation = validateChangePlan(plan);
+
+  console.log(formatDetectedProject(context));
+  console.log("");
+  console.log(`Stack: ${stack.name}`);
+  console.log(
+    `Resolved integrations: ${resolved.integrations
+      .map((integration) => integration.manifest.id)
+      .join(", ")}`
+  );
+  console.log("");
+  console.log(formatChangePlan(plan));
+
+  if (!validation.valid) {
+    console.error("");
+    console.error("Avis cannot apply this stack plan:");
+    for (const diagnostic of validation.diagnostics) {
+      if (diagnostic.severity === "error") {
+        console.error(`- ${diagnostic.message}`);
+      }
+    }
+    process.exitCode = 1;
+    return;
+  }
+
+  if (isEmptyChangePlan(plan)) {
+    console.log("");
+    await printStackVerification(resolved.integrations, context);
+    return;
+  }
+
+  const confirmed = options.yes || options.dryRun || (await confirm("Apply stack changes?"));
+  if (!confirmed) {
+    console.log("Cancelled.");
+    return;
+  }
+
+  const result = await applyChangePlan(plan, {
+    dryRun: options.dryRun,
+    commandRunner: runPackageManagerCommand
+  });
+
+  for (const applied of result.applied) {
+    console.log(`${applied.skipped ? "-" : "OK"} ${applied.message}`);
+  }
+
+  if (!options.dryRun) {
+    for (const [index, integration] of resolved.integrations.entries()) {
+      const integrationPlan = plans[index];
+      if (integrationPlan) {
+        await recordAppliedIntegrationPlan(integrationPlan, integration);
+      }
+    }
+  }
+
+  await printStackVerification(resolved.integrations, context);
+}
+
+async function runAdd(subject: string, options: CliOptions): Promise<void> {
+  const context = await detectSingleProjectContext();
+  if (!context) {
+    return;
+  }
+
+  const integration = await resolveIntegration(subject, context, registry, options);
+
+  if (!integration) {
+    return;
+  }
+
+  await planConfirmApplyAndVerify(integration, context, options);
+}
+
+async function runRepair(subject: string, options: CliOptions): Promise<void> {
+  const context = await detectSingleProjectContext();
+  if (!context) {
+    return;
+  }
+
+  const integration = await resolveIntegration(subject, context, registry, options);
+  if (!integration) {
+    return;
+  }
+
+  if (!integration.verify) {
+    console.error(`${integration.manifest.name} does not expose a verifier yet.`);
+    process.exitCode = 1;
+    return;
+  }
+
+  const verification = await integration.verify(context);
+  if (verification.health === "healthy") {
+    console.log(`${integration.manifest.name} is already healthy.`);
+    console.log("");
+    console.log(formatVerification(verification));
+    return;
+  }
+
+  await planConfirmApplyAndVerify(integration, context, options);
 }
 
 async function runAddInteractive(): Promise<void> {
@@ -116,6 +410,9 @@ async function runAddInteractive(): Promise<void> {
   console.log("  avis add forms");
   console.log("  avis add validation");
   console.log("  avis add api");
+  console.log("  avis add auth");
+  console.log("  avis add observability");
+  console.log("  avis add icons");
   console.log("  avis add zustand");
 }
 
@@ -138,7 +435,8 @@ async function detectSingleProjectContext(): Promise<ProjectContext | undefined>
 async function resolveIntegration(
   subject: string,
   context: ProjectContext,
-  integrationRegistry: IntegrationRegistry
+  integrationRegistry: IntegrationRegistry,
+  options: CliOptions
 ): Promise<AvisIntegration | undefined> {
   const directIntegration = integrationRegistry.findIntegrationById(subject);
   if (directIntegration) {
@@ -146,49 +444,67 @@ async function resolveIntegration(
     if (!compatibility.supported) {
       console.error(compatibility.reason);
       printSupportedTargets(integrationRegistry);
+      process.exitCode = 1;
       return undefined;
     }
 
     return directIntegration;
   }
 
-  const capability = integrationRegistry.findCapabilityById(subject);
+  const capability = integrationRegistry.findCapabilityByQuery(subject);
   if (!capability) {
     console.error(`Unknown integration or capability: ${subject}`);
     printKnownCommands();
+    process.exitCode = 1;
     return undefined;
   }
 
-  const compatible = integrationRegistry.findCompatibleIntegrationsForCapability(
+  const recommendations = integrationRegistry.recommendIntegrationsForCapability(
     capability.id,
     context
   );
-  if (compatible.length === 1) {
-    return compatible[0];
+  if (recommendations.length === 1) {
+    return recommendations[0]?.integration;
   }
 
-  if (compatible.length === 0) {
+  if (recommendations.length === 0) {
     console.error(
       `No compatible ${capability.name} integrations are available for this project yet.`
     );
     printSupportedTargets(integrationRegistry);
+    process.exitCode = 1;
     return undefined;
   }
 
-  console.log(`${capability.name} integrations:`);
-  for (const integration of compatible) {
-    console.log(`- ${integration.manifest.id} (${integration.manifest.name})`);
+  printCapabilityRecommendations(capability.name, recommendations);
+
+  const recommended = recommendations[0];
+  if (!recommended) {
+    return undefined;
   }
+
+  if (options.yes || options.dryRun) {
+    return recommended.integration;
+  }
+
+  const confirmed = await confirm(
+    `Use recommended integration ${recommended.integration.manifest.id}?`
+  );
+  if (confirmed) {
+    return recommended.integration;
+  }
+
   console.log("");
   console.log(
-    `Run avis add <integration>, for example: avis add ${compatible[0]?.manifest.id}`
+    `Run avis add <integration>, for example: avis add ${recommended.integration.manifest.id}`
   );
   return undefined;
 }
 
 async function planConfirmApplyAndVerify(
   integration: AvisIntegration,
-  context: ProjectContext
+  context: ProjectContext,
+  options: CliOptions
 ): Promise<void> {
   const compatibility = integration.isCompatible(context);
 
@@ -196,6 +512,15 @@ async function planConfirmApplyAndVerify(
     console.error(compatibility.reason);
     process.exitCode = 1;
     return;
+  }
+
+  const conflicts = await registry.findInstalledCapabilityConflicts(integration, context);
+  if (conflicts.length > 0) {
+    console.log("Conflict warnings:");
+    for (const conflict of conflicts) {
+      console.log(`- ${conflict}`);
+    }
+    console.log("");
   }
 
   const plan = await integration.plan({ context });
@@ -223,13 +548,14 @@ async function planConfirmApplyAndVerify(
     return;
   }
 
-  const confirmed = await confirm("Apply changes?");
+  const confirmed = options.yes || options.dryRun || (await confirm("Apply changes?"));
   if (!confirmed) {
     console.log("Cancelled.");
     return;
   }
 
   const result = await applyChangePlan(plan, {
+    dryRun: options.dryRun,
     commandRunner: runPackageManagerCommand
   });
 
@@ -237,29 +563,40 @@ async function planConfirmApplyAndVerify(
     console.log(`${applied.skipped ? "-" : "OK"} ${applied.message}`);
   }
 
+  if (!options.dryRun) {
+    await recordAppliedIntegrationPlan(plan, integration);
+  }
+
   await printVerification(integration, context);
 }
 
-async function runDoctor(): Promise<void> {
+async function runDoctor(options: CliOptions): Promise<void> {
   const context = await detectSingleProjectContext();
   if (!context) {
     return;
   }
 
-  console.log("Avis Project Health");
-  console.log("");
-  console.log(formatDetectedProject(context));
+  const entries = await collectDoctorEntries(context);
+  const state = await readAvisProjectState(context.targetRoot);
 
+  if (options.json) {
+    console.log(JSON.stringify(formatDoctorJson(context, entries, state), null, 2));
+  } else {
+    printDoctorReport(context, entries, Object.keys(state.integrations));
+  }
+
+  if (
+    options.strict &&
+    entries.some((entry) => !["healthy", "not-installed"].includes(entry.verification.health))
+  ) {
+    process.exitCode = 1;
+  }
+}
+
+async function collectDoctorEntries(context: ProjectContext): Promise<DoctorEntry[]> {
   const compatibleIntegrations = registry.integrations.filter(
     (integration) => integration.isCompatible(context).supported && integration.verify
   );
-
-  if (compatibleIntegrations.length === 0) {
-    console.log("");
-    console.log("No compatible verifiers are available for this project yet.");
-    printSupportedTargets(registry);
-    return;
-  }
 
   const entries: DoctorEntry[] = [];
 
@@ -272,8 +609,32 @@ async function runDoctor(): Promise<void> {
     entries.push({ integration, verification });
   }
 
+  return entries;
+}
+
+function printDoctorReport(
+  context: ProjectContext,
+  entries: DoctorEntry[],
+  rememberedIntegrationIds: string[]
+): void {
+  console.log("Avis Project Health");
+  console.log("");
+  console.log(formatDetectedProject(context));
+
+  if (entries.length === 0) {
+    console.log("");
+    console.log("No compatible verifiers are available for this project yet.");
+    printSupportedTargets(registry);
+    return;
+  }
+
   console.log("");
   console.log(formatDoctorSummary(entries));
+  if (rememberedIntegrationIds.length > 0) {
+    console.log(
+      `Avis remembers applying: ${rememberedIntegrationIds.sort().join(", ")}`
+    );
+  }
 
   for (const health of doctorHealthOrder) {
     const group = entries.filter((entry) => entry.verification.health === health);
@@ -292,6 +653,53 @@ async function runDoctor(): Promise<void> {
   }
 }
 
+function formatDoctorJson(
+  context: ProjectContext,
+  entries: DoctorEntry[],
+  state: Awaited<ReturnType<typeof readAvisProjectState>>
+): unknown {
+  return {
+    status: getOverallDoctorStatus(entries),
+    project: {
+      targetId: context.targetId,
+      ecosystem: context.ecosystem,
+      framework: context.framework?.id,
+      packageManager: context.packageManager?.id,
+      languages: context.languages
+    },
+    integrations: entries.map((entry) => ({
+      id: entry.integration.manifest.id,
+      name: entry.integration.manifest.name,
+      capability: entry.integration.manifest.capability,
+      status: entry.integration.manifest.status,
+      trust: entry.integration.manifest.trust,
+      health: entry.verification.health,
+      checks: entry.verification.checks,
+      diagnostics: entry.verification.diagnostics
+    })),
+    state: {
+      schemaVersion: state.schemaVersion,
+      rememberedIntegrations: Object.entries(state.integrations).map(
+        ([id, record]) => ({
+          id,
+          integrationVersion: record.integrationVersion,
+          appliedAt: record.appliedAt,
+          files: record.files.map((file) => ({
+            path: file.path,
+            createdByAvis: file.createdByAvis,
+            modifiedByAvis: file.modifiedByAvis
+          })),
+          dependencies: record.dependencies.map((dependency) => ({
+            name: dependency.name,
+            packageManager: dependency.packageManager,
+            dependencyType: dependency.dependencyType
+          }))
+        })
+      )
+    }
+  };
+}
+
 function printHelp(): void {
   console.log(`Avis
 
@@ -300,10 +708,31 @@ Usage:
   avis add
   avis add <capability>
   avis add zustand
+  avis repair <integration>
   avis list
+  avis search <query>
   avis show <integration|capability>
-  avis doctor
+  avis stack list
+  avis stack show <stack>
+  avis stack use <stack>
+  avis integration create <integration-id>
+  avis doctor [--json] [--strict]
 `);
+}
+
+function printSearch(query: string): void {
+  const results = registry.search(query);
+
+  console.log(`Search results for "${query}":`);
+  if (results.length === 0) {
+    console.log("- none");
+    return;
+  }
+
+  for (const result of results) {
+    const detail = result.description ? ` - ${result.description}` : "";
+    console.log(`- ${result.kind}: ${result.id} (${result.name})${detail}`);
+  }
 }
 
 function printList(): void {
@@ -316,7 +745,7 @@ function printList(): void {
   console.log("Integrations:");
   for (const integration of registry.integrations) {
     console.log(
-      `- ${integration.manifest.id}: ${integration.manifest.name} (${integration.manifest.capability})`
+      `- ${integration.manifest.id}: ${integration.manifest.name} (${integration.manifest.capability}, ${formatStatusLabel(integration.manifest.status)}, ${formatTrustLabel(integration.manifest.trust)})`
     );
   }
 }
@@ -328,7 +757,7 @@ function printShow(subject: string): void {
     return;
   }
 
-  const capability = registry.findCapabilityById(subject);
+  const capability = registry.findCapabilityByQuery(subject);
   if (capability) {
     const integrations = registry.integrations.filter(
       (candidate) => candidate.manifest.capability === capability.id
@@ -340,6 +769,15 @@ function printShow(subject: string): void {
     }
 
     console.log("");
+    console.log("Capability");
+    console.log(`- ID: ${capability.id}`);
+    console.log(`- Aliases: ${formatList(capability.aliases)}`);
+    console.log(`- Exclusive: ${capability.exclusive ? "yes" : "no"}`);
+    console.log(
+      `- Defaults: ${formatCapabilityDefaults(capability.defaultIntegrations)}`
+    );
+
+    console.log("");
     console.log("Integrations:");
     if (integrations.length === 0) {
       console.log("- none");
@@ -348,7 +786,7 @@ function printShow(subject: string): void {
 
     for (const candidate of integrations) {
       console.log(
-        `- ${candidate.manifest.id}: ${candidate.manifest.name} (${formatStatusLabel(candidate.manifest.status)})`
+        `- ${candidate.manifest.id}: ${candidate.manifest.name} (${formatStatusLabel(candidate.manifest.status)}, ${formatTrustLabel(candidate.manifest.trust)})`
       );
     }
     return;
@@ -370,6 +808,7 @@ function printIntegrationDetails(integration: AvisIntegration): void {
   console.log(`- Capability: ${manifest.capability}`);
   console.log(`- Version: ${manifest.version}`);
   console.log(`- Status: ${formatStatusLabel(manifest.status)}`);
+  console.log(`- Trust: ${formatTrustLabel(manifest.trust)}`);
   console.log("");
   console.log("Supports");
   console.log(`- Ecosystems: ${formatList(manifest.supports.ecosystems)}`);
@@ -430,6 +869,26 @@ function printSupportedTargets(integrationRegistry: IntegrationRegistry): void {
   }
 }
 
+function printCapabilityRecommendations(
+  capabilityName: string,
+  recommendations: IntegrationRecommendation[]
+): void {
+  console.log(`${capabilityName} integrations:`);
+  for (const [index, recommendation] of recommendations.entries()) {
+    const marker = recommendation.recommended || index === 0 ? "recommended" : "alternative";
+    console.log("");
+    console.log(`${index + 1}. ${recommendation.integration.manifest.name} (${marker})`);
+    console.log(`   ID: ${recommendation.integration.manifest.id}`);
+    console.log(`   ${recommendation.integration.manifest.description}`);
+    console.log("   Why:");
+    for (const reason of recommendation.reasons) {
+      console.log(`   - ${reason}`);
+    }
+  }
+  console.log("");
+  console.log(`Recommended: ${recommendations[0]?.integration.manifest.id}`);
+}
+
 function formatDetectedProject(context: ProjectContext): string {
   return [
     "Detected:",
@@ -444,6 +903,22 @@ function formatList(values: readonly string[] | undefined): string {
   return values && values.length > 0 ? values.join(", ") : "any";
 }
 
+function formatCapabilityDefaults(
+  defaults: Partial<Record<string, string>> | undefined
+): string {
+  const entries = Object.entries(defaults ?? {}).filter(
+    (entry): entry is [string, string] => entry[1] !== undefined
+  );
+
+  if (entries.length === 0) {
+    return "none";
+  }
+
+  return entries
+    .map(([ecosystem, integration]) => `${ecosystem}: ${integration}`)
+    .join(", ");
+}
+
 function formatStatusLabel(status: AvisIntegration["manifest"]["status"]): string {
   switch (status) {
     case "experimental":
@@ -452,6 +927,19 @@ function formatStatusLabel(status: AvisIntegration["manifest"]["status"]): strin
       return "Stable";
     case "deprecated":
       return "Deprecated";
+  }
+}
+
+function formatTrustLabel(trust: AvisIntegration["manifest"]["trust"]): string {
+  switch (trust) {
+    case "official":
+      return "Official";
+    case "verified":
+      return "Verified";
+    case "community":
+      return "Community";
+    case "experimental":
+      return "Experimental";
   }
 }
 
@@ -466,6 +954,21 @@ async function printVerification(
   const verification = await integration.verify(context);
   console.log("");
   console.log(formatVerification(verification));
+}
+
+async function printStackVerification(
+  integrations: AvisIntegration[],
+  context: ProjectContext
+): Promise<void> {
+  for (const integration of integrations) {
+    if (!integration.verify) {
+      continue;
+    }
+
+    console.log("");
+    console.log(integration.manifest.name);
+    await printVerification(integration, context);
+  }
 }
 
 function formatVerification(result: VerificationResult): string {
@@ -512,6 +1015,122 @@ function formatDoctorSummary(entries: DoctorEntry[]): string {
   return `Summary: ${parts.length > 0 ? parts.join(", ") : "no integrations checked"}`;
 }
 
+function getOverallDoctorStatus(entries: DoctorEntry[]): VerificationResult["health"] {
+  for (const health of doctorHealthOrder) {
+    if (entries.some((entry) => entry.verification.health === health)) {
+      return health;
+    }
+  }
+
+  return "unknown";
+}
+
+function createManifestTemplate(integrationId: string): string {
+  return `import type { AvisIntegrationManifest } from "@avis/core";
+
+export const manifest = {
+  id: "${integrationId}",
+  name: "${toTitleCase(integrationId)}",
+  description: "Describe the project capability this integration provides.",
+  capability: "replace-with-capability-id",
+  version: "0.1.0",
+  status: "experimental",
+  trust: "community",
+  supports: {
+    ecosystems: ["node"]
+  },
+  dependencies: [],
+  configures: [],
+  source: {
+    owner: "community"
+  }
+} satisfies AvisIntegrationManifest;
+`;
+}
+
+function createPlanTemplate(integrationId: string): string {
+  return `import type { ChangePlan, IntegrationPlanRequest } from "@avis/core";
+import { manifest } from "./manifest.js";
+
+export async function plan({ context }: IntegrationPlanRequest): Promise<ChangePlan> {
+  return {
+    id: manifest.id,
+    title: "Add ${toTitleCase(integrationId)}",
+    integrationId: manifest.id,
+    target: context,
+    operations: [],
+    diagnostics: []
+  };
+}
+`;
+}
+
+function createVerifyTemplate(integrationId: string): string {
+  return `import type { ProjectContext, VerificationResult } from "@avis/core";
+import { manifest } from "./manifest.js";
+
+export async function verify(_context: ProjectContext): Promise<VerificationResult> {
+  return {
+    integrationId: manifest.id,
+    health: "unknown",
+    checks: [
+      {
+        id: "${integrationId}-manual-check",
+        label: "integration verification",
+        status: "skipped",
+        message: "Add project inspection checks before submitting this integration."
+      }
+    ],
+    diagnostics: []
+  };
+}
+`;
+}
+
+function createTestTemplate(integrationId: string): string {
+  return `import { describe, expect, it } from "vitest";
+import { manifest } from "../manifest.js";
+
+describe("${integrationId}", () => {
+  it("declares a capability", () => {
+    expect(manifest.capability).not.toBe("replace-with-capability-id");
+  });
+});
+`;
+}
+
+function createIntegrationReadme(integrationId: string): string {
+  return `# ${toTitleCase(integrationId)}
+
+Describe the capability this integration provides, the projects it supports, the files it may create or modify, and how verification works.
+
+Before this integration is ready, add:
+
+- manifest metadata
+- compatibility checks
+- ChangePlan generation
+- verifier checks
+- fixtures
+- tests
+`;
+}
+
+function toTitleCase(value: string): string {
+  return value
+    .split("-")
+    .map((part) => `${part.slice(0, 1).toUpperCase()}${part.slice(1)}`)
+    .join(" ");
+}
+
+async function pathExists(filePath: string): Promise<boolean> {
+  try {
+    await access(filePath);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 function formatHealthLabel(health: VerificationResult["health"]): string {
   switch (health) {
     case "not-installed":
@@ -536,6 +1155,38 @@ async function confirm(question: string): Promise<boolean> {
   } finally {
     rl.close();
   }
+}
+
+function parseArgs(args: string[]): { positionals: string[]; options: CliOptions } {
+  const options: CliOptions = {
+    yes: false,
+    dryRun: false,
+    json: false,
+    strict: false
+  };
+  const positionals: string[] = [];
+
+  for (const arg of args) {
+    switch (arg) {
+      case "--yes":
+      case "-y":
+        options.yes = true;
+        break;
+      case "--dry-run":
+        options.dryRun = true;
+        break;
+      case "--json":
+        options.json = true;
+        break;
+      case "--strict":
+        options.strict = true;
+        break;
+      default:
+        positionals.push(arg);
+    }
+  }
+
+  return { positionals, options };
 }
 
 runCli().catch((error: unknown) => {
