@@ -20,17 +20,15 @@ Current fields include:
 - `documentation`
 - `source`
 
-Supported statuses are:
+Public built-in integration statuses are:
 
-- `experimental`
 - `stable`
 - `deprecated`
 
-Supported trust levels are:
+Public built-in trust levels are:
 
 - `official`
 - `verified`
 - `community`
-- `experimental`
 
-Project support should still be described carefully in documentation while Avis itself is alpha.
+Supported V2 framework pages should only list integrations with stable manifests, documented behavior, verification, and tests. Future roadmap work should stay out of the public support table until it meets that bar.

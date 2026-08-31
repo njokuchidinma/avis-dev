@@ -14,6 +14,8 @@ Current built-in capabilities:
 | `api` | API | API framework extensions and tooling. |
 | `forms` | Forms | Form state and submission helpers. |
 | `validation` | Validation | Runtime schema validation. |
+| `auth` | Authentication | Authentication and API access control. |
+| `observability` | Observability | Logging, tracing, and error visibility. |
 | `icons` | Icons | Icon libraries and icon systems for application interfaces. |
 
 Example:
@@ -26,6 +28,9 @@ Prefer capability-first commands when you know the purpose but not the specific 
 
 ```sh
 avis add icons
+avis add api
+avis add auth
+avis add observability
 ```
 
 If exactly one compatible integration exists for the detected project and capability, Avis selects it. If multiple compatible integrations exist, Avis recommends one, explains why, and shows alternatives. Exact integration commands still work when you already know the concrete tool:

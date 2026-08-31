@@ -6,6 +6,9 @@ description: Add a capability or integration to the detected project.
 ```sh
 avis add
 avis add state-management
+avis add api
+avis add auth
+avis add observability
 avis add icons
 avis add zustand
 avis add icons --dry-run
@@ -17,6 +20,17 @@ avis add icons --yes
 `avis add <capability>` resolves compatible integrations for the detected project. If exactly one compatible integration exists, Avis uses it. If multiple compatible integrations exist, Avis recommends one, explains why, shows alternatives, and asks whether to use the recommendation.
 
 `avis add <integration>` runs that integration when it is compatible with the detected project.
+
+Framework examples:
+
+| Project | Purpose command | Default integration |
+| --- | --- | --- |
+| Next.js | `avis add icons` | Lucide React |
+| Next.js | `avis add validation` | Zod |
+| Django | `avis add api` | Django REST Framework |
+| Laravel | `avis add auth` | Laravel Sanctum |
+| Flutter | `avis add state-management` | Flutter Riverpod |
+| Rust | `avis add observability` | Rust tracing |
 
 Use `--dry-run` to preview without changing files or installing dependencies. Use `--yes` to accept the recommended integration and apply the ChangePlan without confirmation.
 

@@ -63,7 +63,7 @@ Current integration:
 
 ## Laravel
 
-Status: experimental
+Status: alpha
 
 Detected through:
 
@@ -83,9 +83,17 @@ Current integration:
 
 - Laravel Sanctum
 
+Purpose-first commands:
+
+```sh
+avis add auth
+avis add authentication
+avis add api-auth
+```
+
 ## Flutter
 
-Status: experimental
+Status: alpha
 
 Detected through:
 
@@ -104,9 +112,17 @@ Current integration:
 
 - Flutter Riverpod
 
+Purpose-first commands:
+
+```sh
+avis add state-management
+avis add state
+avis add stores
+```
+
 ## Rust
 
-Status: experimental
+Status: alpha
 
 Detected through:
 
@@ -123,6 +139,14 @@ Supported package manager:
 Current integration:
 
 - Rust tracing
+
+Purpose-first commands:
+
+```sh
+avis add observability
+avis add logging
+avis add tracing
+```
 
 ## Roadmap Signals
 

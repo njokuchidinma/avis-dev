@@ -18,7 +18,7 @@ export const flutterRiverpodIntegration: AvisIntegration = {
     description: "Provider-based state management for Flutter applications.",
     capability: "state-management",
     version: "1.0.0",
-    status: "experimental",
+    status: "stable",
     trust: "official",
     supports: {
       ecosystems: [ecosystems.dart],

@@ -174,6 +174,9 @@ describe("IntegrationRegistry", () => {
       "stack:next-standard"
     ]);
     expect(registry.search("icon package")[0]?.id).toBe("icons");
+    expect(registry.search("api-auth").map((result) => result.id)).not.toContain(
+      "lucide-react"
+    );
   });
 });
 

@@ -15,7 +15,7 @@ export const rustTracingIntegration: AvisIntegration = {
     description: "Structured diagnostics instrumentation for Rust applications.",
     capability: "observability",
     version: "1.0.0",
-    status: "experimental",
+    status: "stable",
     trust: "official",
     supports: {
       ecosystems: [ecosystems.rust],

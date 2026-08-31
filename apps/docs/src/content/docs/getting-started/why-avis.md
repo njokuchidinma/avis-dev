@@ -27,4 +27,4 @@ Avis is more than installation. An integration can install dependencies, create 
 
 Avis is intended to be idempotent. Running an integration again should not duplicate starter files or configuration when the expected setup is already present.
 
-Avis is ecosystem agnostic by design. The first supported ecosystems are Node and Python, but the core model is not tied to one framework family.
+Avis is ecosystem agnostic by design. The current V2 alpha support covers Node, Python, PHP, Dart, and Rust projects through framework-specific capabilities and integrations.

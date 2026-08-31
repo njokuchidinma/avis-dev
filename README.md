@@ -137,13 +137,13 @@ avis show icons
 
 ## Current Supported Frameworks
 
-| Framework | Status | Integrations |
-| --- | --- | --- |
-| Next.js | Alpha | Zustand, Redux Toolkit, TanStack Query, Zod, React Hook Form, Lucide React, React Icons, Heroicons React |
-| Django | Alpha | Django REST Framework |
-| Laravel | Experimental | Laravel Sanctum |
-| Flutter | Experimental | Flutter Riverpod |
-| Rust | Experimental | Rust tracing |
+| Framework | Status | Purpose commands | Default integrations |
+| --- | --- | --- | --- |
+| Next.js | Alpha | `state-management`, `data-fetching`, `forms`, `validation`, `icons` | Zustand, TanStack Query, React Hook Form, Zod, Lucide React |
+| Django | Alpha | `api`, `rest-api` | Django REST Framework |
+| Laravel | Alpha | `auth`, `authentication`, `api-auth` | Laravel Sanctum |
+| Flutter | Alpha | `state-management`, `state`, `stores` | Flutter Riverpod |
+| Rust | Alpha | `observability`, `logging`, `tracing` | Rust tracing |
 
 ## Current Integrations
 

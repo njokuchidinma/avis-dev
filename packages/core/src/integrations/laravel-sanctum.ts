@@ -15,7 +15,7 @@ export const laravelSanctumIntegration: AvisIntegration = {
     description: "Token and session authentication for Laravel applications.",
     capability: "auth",
     version: "1.0.0",
-    status: "experimental",
+    status: "stable",
     trust: "official",
     supports: {
       ecosystems: [ecosystems.php],
