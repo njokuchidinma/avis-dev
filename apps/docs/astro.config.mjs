@@ -4,7 +4,7 @@ import starlight from '@astrojs/starlight';
 
 // https://astro.build/config
 export default defineConfig({
-	site: 'https://njokuchidinma.github.io/avis-dev',
+	site: 'https://avis-dev.vercel.app/',
 	integrations: [
 		starlight({
 			title: 'Avis',

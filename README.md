@@ -6,6 +6,8 @@ Avis is a source-available, ecosystem-agnostic CLI that safely adds, configures,
 
 Framework scaffolders create the project. Avis equips it.
 
+[Documentation](https://avis-dev.vercel.app/) | [GitHub](https://github.com/njokuchidinma/avis-dev)
+
 ```txt
 $ npm install -g avis-dev@alpha
 $ cd my-next-app
@@ -100,10 +102,20 @@ node path/to/avis-dev/packages/cli/dist/index.js
 
 ## 30-Second Quick Start
 
+Install a capability by purpose:
+
 ```sh
 cd my-next-app
 avis search icons
 avis add icons
+avis doctor
+```
+
+Add state management the same way:
+
+```sh
+cd my-next-app
+avis add state-management
 avis doctor
 ```
 
@@ -189,7 +201,9 @@ pnpm docs:generate-registry
 
 ## Documentation
 
-The documentation site lives in `apps/docs` and is built with Astro + Starlight.
+Read the public documentation at [avis-dev.vercel.app](https://avis-dev.vercel.app/).
+
+The documentation source lives in `apps/docs` and is built with Astro + Starlight.
 
 ```sh
 pnpm docs:dev
