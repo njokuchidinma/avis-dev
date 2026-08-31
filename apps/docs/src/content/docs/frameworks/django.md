@@ -29,6 +29,19 @@ Avis uses the detected Python package manager for Django project dependencies. A
 
 - Django REST Framework
 
+## Purpose-First Commands
+
+```sh
+avis add api
+avis add rest-api
+```
+
+## What Avis May Change
+
+Avis installs Django REST Framework and patches the detected Django settings module so `rest_framework` is present in `INSTALLED_APPS`.
+
+`avis doctor` verifies both the Python dependency and settings configuration. If the package is installed but settings are missing `rest_framework`, Avis reports the integration as partially configured.
+
 ## Not Handled By Avis
 
 Avis does not replace `django-admin startproject`, project layout decisions, database configuration, settings module design, authentication setup, or deployment configuration.

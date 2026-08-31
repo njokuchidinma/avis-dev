@@ -445,8 +445,9 @@ function tokenizeIdentifier(value: string): string[] {
 function tokensMatch(queryToken: string, valueToken: string): boolean {
   return (
     queryToken === valueToken ||
-    queryToken.startsWith(valueToken) ||
-    valueToken.startsWith(queryToken)
+    (queryToken.length >= 4 &&
+      valueToken.length >= 4 &&
+      (queryToken.startsWith(valueToken) || valueToken.startsWith(queryToken)))
   );
 }
 

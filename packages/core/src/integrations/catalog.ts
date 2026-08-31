@@ -29,17 +29,28 @@ export const builtInCapabilities: Capability[] = [
   {
     id: "data-fetching",
     name: "Data Fetching",
-    description: "Client-side server-state and API fetching."
+    description: "Client-side server-state and API fetching.",
+    defaultIntegrations: {
+      [ecosystems.node]: "tanstack-query"
+    }
   },
   {
     id: "api",
     name: "API",
-    description: "API framework extensions and tooling."
+    description: "API framework extensions and tooling.",
+    aliases: ["api-tooling", "rest-api"],
+    defaultIntegrations: {
+      [ecosystems.python]: "django-rest-framework"
+    }
   },
   {
     id: "forms",
     name: "Forms",
-    description: "Form state and submission helpers."
+    description: "Form state and submission helpers.",
+    aliases: ["form", "form-state"],
+    defaultIntegrations: {
+      [ecosystems.node]: "react-hook-form"
+    }
   },
   {
     id: "validation",
@@ -53,7 +64,11 @@ export const builtInCapabilities: Capability[] = [
   {
     id: "auth",
     name: "Authentication",
-    description: "Authentication and API access control."
+    description: "Authentication and API access control.",
+    aliases: ["authentication", "api-auth", "access-control"],
+    defaultIntegrations: {
+      [ecosystems.php]: "laravel-sanctum"
+    }
   },
   {
     id: "observability",
