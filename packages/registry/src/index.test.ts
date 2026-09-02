@@ -227,6 +227,30 @@ describe("manifest validation", () => {
     });
   });
 
+  it("accepts local integration trust metadata", () => {
+    expect(
+      validateIntegrationManifest({
+        id: "company-auth",
+        name: "Company Auth",
+        description: "Internal auth package.",
+        capability: "auth",
+        version: "0.1.0",
+        status: "experimental",
+        trust: "local",
+        supports: {
+          ecosystems: ["node"]
+        },
+        source: {
+          owner: "local",
+          path: "company-auth"
+        }
+      })
+    ).toEqual({
+      valid: true,
+      errors: []
+    });
+  });
+
   it("validates stack manifests", () => {
     expect(
       validateStackManifest({

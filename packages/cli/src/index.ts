@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { access, mkdir, writeFile } from "node:fs/promises";
+import { access, mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { createInterface } from "node:readline/promises";
 import { stdin as input, stdout as output } from "node:process";
@@ -12,11 +12,20 @@ import {
   detectProject,
   formatChangePlan,
   isEmptyChangePlan,
+  loadLocalIntegrations,
+  localIntegrationManifestFile,
+  localIntegrationPlanFile,
+  localIntegrationRegistryPath,
+  localIntegrationVerifyFile,
   recordAppliedIntegrationPlan,
   readAvisProjectState,
+  readLocalIntegrationRegistry,
+  registerLocalIntegration,
+  resolveInsideRoot,
   runPackageManagerCommand,
   validateChangePlan,
   type AvisIntegration,
+  type Diagnostic,
   type ProjectContext,
   type VerificationResult
 } from "@avis/core";
@@ -25,7 +34,8 @@ import {
   formatSupportGroupLabel,
   type IntegrationRecommendation,
   type IntegrationRegistry,
-  type StackManifest
+  type StackManifest,
+  validateStackManifest
 } from "@avis/registry";
 
 const builtInStacks: StackManifest[] = [
@@ -43,15 +53,15 @@ const builtInStacks: StackManifest[] = [
   }
 ];
 
-const registry = createIntegrationRegistry({
-  capabilities: builtInCapabilities,
-  integrations: builtInIntegrations,
-  stacks: builtInStacks
-});
 
 interface DoctorEntry {
   integration: AvisIntegration;
   verification: VerificationResult;
+}
+
+interface RuntimeRegistry {
+  registry: IntegrationRegistry;
+  diagnostics: Diagnostic[];
 }
 
 interface CliOptions {
@@ -61,8 +71,29 @@ interface CliOptions {
   strict: boolean;
 }
 
+async function createRuntimeRegistry(projectRoot = process.cwd()): Promise<RuntimeRegistry> {
+  const local = await loadLocalIntegrations(projectRoot);
+
+  return {
+    registry: createIntegrationRegistry({
+      capabilities: builtInCapabilities,
+      integrations: [...builtInIntegrations, ...local.integrations],
+      stacks: builtInStacks
+    }),
+    diagnostics: local.diagnostics
+  };
+}
+
+function printRuntimeDiagnostics(diagnostics: Diagnostic[]): void {
+  for (const diagnostic of diagnostics) {
+    const prefix = diagnostic.severity === "error" ? "Error" : "Warning";
+    console.error(`${prefix}: ${diagnostic.message}`);
+  }
+}
+
 export async function runCli(argv = process.argv.slice(2)): Promise<void> {
   const args = argv[0] === "--" ? argv.slice(1) : argv;
+
   const { positionals, options } = parseArgs(args);
   const [command, subject] = positionals;
 
@@ -93,12 +124,12 @@ export async function runCli(argv = process.argv.slice(2)): Promise<void> {
   }
 
   if (command === "list") {
-    printList();
+    await printList();
     return;
   }
 
   if (command === "show" && subject) {
-    printShow(subject);
+    await printShow(subject);
     return;
   }
 
@@ -113,8 +144,9 @@ export async function runCli(argv = process.argv.slice(2)): Promise<void> {
     return;
   }
 
+
   if (command === "search" && subject) {
-    printSearch(positionals.slice(1).join(" "));
+    await printSearch(positionals.slice(1).join(" "));
     return;
   }
 
@@ -139,15 +171,67 @@ export async function runCli(argv = process.argv.slice(2)): Promise<void> {
 
 async function runIntegrationCommand(
   action: string | undefined,
-  integrationId: string | undefined
+  value: string | undefined
 ): Promise<void> {
-  if (action !== "create" || !integrationId) {
-    console.error("Usage: avis integration create <integration-id>");
-    process.exitCode = 1;
+  switch (action) {
+    case "create":
+      if (!value) {
+        console.error("Usage: avis integration create <integration-id>");
+        process.exitCode = 1;
+        return;
+      }
+      await scaffoldIntegration(value);
+      return;
+
+    case "add":
+      if (!value) {
+        console.error("Usage: avis integration add <local-path>");
+        process.exitCode = 1;
+        return;
+      }
+      await addLocalIntegration(value);
+      return;
+
+    case "list":
+      await printLocalIntegrationList();
+      return;
+
+    default:
+      console.error("Usage: avis integration <create|add|list>");
+      process.exitCode = 1;
+  }
+}
+
+async function addLocalIntegration(integrationPath: string): Promise<void> {
+  await registerLocalIntegration(process.cwd(), integrationPath);
+  const local = await loadLocalIntegrations(process.cwd());
+  printRuntimeDiagnostics(local.diagnostics);
+
+  console.log(`Registered local integration: ${integrationPath}`);
+  console.log(`Registry: ${localIntegrationRegistryPath}`);
+}
+
+async function printLocalIntegrationList(): Promise<void> {
+  const registryFile = await readLocalIntegrationRegistry(process.cwd());
+
+  console.log("Local integrations:");
+  if (registryFile.integrations.length === 0) {
+    console.log("- none");
     return;
   }
 
-  await scaffoldIntegration(integrationId);
+  const loaded = await loadLocalIntegrations(process.cwd());
+  printRuntimeDiagnostics(loaded.diagnostics);
+
+  for (const entry of registryFile.integrations) {
+    const integration = loaded.integrations.find(
+      (candidate) => candidate.manifest.source?.path?.endsWith(entry.path)
+    );
+    const label = integration
+      ? `${integration.manifest.id}: ${integration.manifest.name} (${formatTrustLabel(integration.manifest.trust)})`
+      : entry.path;
+    console.log(`- ${label}`);
+  }
 }
 
 async function scaffoldIntegration(integrationId: string): Promise<void> {
@@ -166,11 +250,27 @@ async function scaffoldIntegration(integrationId: string): Promise<void> {
 
   await mkdir(path.join(root, "fixtures"), { recursive: true });
   await mkdir(path.join(root, "tests"), { recursive: true });
-  await writeFile(path.join(root, "manifest.ts"), createManifestTemplate(integrationId), "utf8");
-  await writeFile(path.join(root, "plan.ts"), createPlanTemplate(integrationId), "utf8");
-  await writeFile(path.join(root, "verify.ts"), createVerifyTemplate(integrationId), "utf8");
+  await writeFile(
+    path.join(root, localIntegrationManifestFile),
+    createManifestTemplate(integrationId),
+    "utf8"
+  );
+  await writeFile(
+    path.join(root, localIntegrationPlanFile),
+    createPlanTemplate(integrationId),
+    "utf8"
+  );
+  await writeFile(
+    path.join(root, localIntegrationVerifyFile),
+    createVerifyTemplate(integrationId),
+    "utf8"
+  );
   await writeFile(path.join(root, "fixtures/.gitkeep"), "", "utf8");
-  await writeFile(path.join(root, "tests/integration.test.ts"), createTestTemplate(integrationId), "utf8");
+  await writeFile(
+    path.join(root, "tests/README.md"),
+    createTestTemplate(integrationId),
+    "utf8"
+  );
   await writeFile(path.join(root, "README.md"), createIntegrationReadme(integrationId), "utf8");
 
   console.log(`Created integration scaffold at ${integrationId}`);
@@ -182,22 +282,31 @@ async function runStack(
   options: CliOptions
 ): Promise<void> {
   switch (action) {
+    case "create":
+      if (!stackId) {
+        console.error("Usage: avis stack create <stack-id|path>");
+        process.exitCode = 1;
+        return;
+      }
+      await runStackCreate(stackId);
+      return;
+
     case "list":
-      printStackList();
+      await printStackList();
       return;
 
     case "show":
       if (!stackId) {
-        console.error("Usage: avis stack show <stack>");
+        console.error("Usage: avis stack show <stack|path>");
         process.exitCode = 1;
         return;
       }
-      printStackShow(stackId);
+      await printStackShow(stackId);
       return;
 
     case "use":
       if (!stackId) {
-        console.error("Usage: avis stack use <stack>");
+        console.error("Usage: avis stack use <stack|path>");
         process.exitCode = 1;
         return;
       }
@@ -205,20 +314,80 @@ async function runStack(
       return;
 
     default:
-      console.error("Usage: avis stack <list|show|use>");
+      console.error("Usage: avis stack <create|list|show|use>");
       process.exitCode = 1;
   }
 }
 
-function printStackList(): void {
+async function runStackCreate(stackIdOrPath: string): Promise<void> {
+  const context = await detectSingleProjectContext();
+  if (!context) {
+    return;
+  }
+
+  const runtime = await createRuntimeRegistry();
+  printRuntimeDiagnostics(runtime.diagnostics);
+
+  const integrations = runtime.registry
+    .findAvailableCapabilities(context)
+    .flatMap((capability) => {
+      const recommended = runtime.registry.recommendIntegrationsForCapability(
+        capability.id,
+        context
+      )[0]?.integration;
+      return recommended ? [recommended.manifest.id] : [];
+    });
+
+  if (integrations.length === 0) {
+    console.error("No compatible integrations are available to export as a stack.");
+    process.exitCode = 1;
+    return;
+  }
+
+  const stack: StackManifest = {
+    id: stackIdFromPath(stackIdOrPath),
+    name: toTitleCase(stackIdFromPath(stackIdOrPath)),
+    description: `Reusable stack generated for ${context.framework?.id ?? context.ecosystem}.`,
+    integrations
+  };
+  const validation = validateStackManifest(stack);
+  if (!validation.valid) {
+    console.error("Avis cannot create this stack:");
+    for (const error of validation.errors) {
+      console.error(`- ${error}`);
+    }
+    process.exitCode = 1;
+    return;
+  }
+
+  const outputPath = stackOutputPath(stackIdOrPath);
+  const absolutePath = resolveInsideRoot(process.cwd(), outputPath);
+  if (await pathExists(absolutePath)) {
+    console.error(`Refusing to overwrite existing stack file: ${outputPath}`);
+    process.exitCode = 1;
+    return;
+  }
+
+  await mkdir(path.dirname(absolutePath), { recursive: true });
+  await writeFile(absolutePath, `${JSON.stringify(stack, null, 2)}\n`, "utf8");
+  console.log(`Created stack file: ${outputPath}`);
+}
+
+async function printStackList(): Promise<void> {
+  const runtime = await createRuntimeRegistry();
+  printRuntimeDiagnostics(runtime.diagnostics);
+
   console.log("Stacks:");
-  for (const stack of registry.stacks) {
+  for (const stack of runtime.registry.stacks) {
     console.log(`- ${stack.id}: ${stack.name}`);
   }
 }
 
-function printStackShow(stackId: string): void {
-  const stack = registry.findStackById(stackId);
+async function printStackShow(stackId: string): Promise<void> {
+  const runtime = await createRuntimeRegistry();
+  printRuntimeDiagnostics(runtime.diagnostics);
+
+  const stack = await findStackManifest(stackId, runtime.registry);
   if (!stack) {
     console.error(`Unknown stack: ${stackId}`);
     process.exitCode = 1;
@@ -245,20 +414,91 @@ function printStackShow(stackId: string): void {
   }
 }
 
+async function findStackManifest(
+  stackIdOrPath: string,
+  integrationRegistry: IntegrationRegistry
+): Promise<StackManifest | undefined> {
+  const builtInStack = integrationRegistry.findStackById(stackIdOrPath);
+  if (builtInStack) {
+    return builtInStack;
+  }
+
+  const absolutePath = resolveInsideRoot(process.cwd(), stackIdOrPath);
+  if (!(await pathExists(absolutePath))) {
+    return undefined;
+  }
+
+  return readStackManifestFile(stackIdOrPath);
+}
+
+async function readStackManifestFile(stackPath: string): Promise<StackManifest> {
+  const absolutePath = resolveInsideRoot(process.cwd(), stackPath);
+  const parsed = JSON.parse(await readFile(absolutePath, "utf8")) as unknown;
+
+  if (!isStackManifest(parsed)) {
+    throw new Error("Stack file must contain id, name, and integrations or capabilities.");
+  }
+
+  const validation = validateStackManifest(parsed);
+  if (!validation.valid) {
+    throw new Error(`Invalid stack file: ${validation.errors.join(" ")}`);
+  }
+
+  return parsed;
+}
+
+function isStackManifest(value: unknown): value is StackManifest {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    return false;
+  }
+
+  const record = value as Record<string, unknown>;
+  return (
+    typeof record.id === "string" &&
+    typeof record.name === "string" &&
+    (record.description === undefined || typeof record.description === "string") &&
+    (record.capabilities === undefined || isStringArray(record.capabilities)) &&
+    (record.integrations === undefined || isStringArray(record.integrations))
+  );
+}
+
+function stackOutputPath(stackIdOrPath: string): string {
+  return stackIdOrPath.endsWith(".json") || stackIdOrPath.includes(path.sep)
+    ? stackIdOrPath
+    : `${stackIdOrPath}.stack.json`;
+}
+
+function stackIdFromPath(stackIdOrPath: string): string {
+  return path
+    .basename(stackOutputPath(stackIdOrPath))
+    .replace(/\.stack\.json$/, "")
+    .replace(/\.json$/, "");
+}
+
 async function runStackUse(stackId: string, options: CliOptions): Promise<void> {
   const context = await detectSingleProjectContext();
   if (!context) {
     return;
   }
 
-  const stack = registry.findStackById(stackId);
+  const runtime = await createRuntimeRegistry();
+  printRuntimeDiagnostics(runtime.diagnostics);
+
+  const stack = await findStackManifest(stackId, runtime.registry);
   if (!stack) {
     console.error(`Unknown stack: ${stackId}`);
     process.exitCode = 1;
     return;
   }
 
-  const resolved = registry.resolveStack(stack.id, context);
+  const stackRegistry = runtime.registry.findStackById(stack.id)
+    ? runtime.registry
+    : createIntegrationRegistry({
+        capabilities: runtime.registry.capabilities,
+        integrations: runtime.registry.integrations,
+        stacks: [...runtime.registry.stacks, stack]
+      });
+  const resolved = stackRegistry.resolveStack(stack.id, context);
   if (!resolved) {
     console.error(`Unknown stack: ${stackId}`);
     process.exitCode = 1;
@@ -347,13 +587,16 @@ async function runAdd(subject: string, options: CliOptions): Promise<void> {
     return;
   }
 
-  const integration = await resolveIntegration(subject, context, registry, options);
+  const runtime = await createRuntimeRegistry();
+  printRuntimeDiagnostics(runtime.diagnostics);
+
+  const integration = await resolveIntegration(subject, context, runtime.registry, options);
 
   if (!integration) {
     return;
   }
 
-  await planConfirmApplyAndVerify(integration, context, options);
+  await planConfirmApplyAndVerify(integration, context, runtime.registry, options);
 }
 
 async function runRepair(subject: string, options: CliOptions): Promise<void> {
@@ -362,7 +605,10 @@ async function runRepair(subject: string, options: CliOptions): Promise<void> {
     return;
   }
 
-  const integration = await resolveIntegration(subject, context, registry, options);
+  const runtime = await createRuntimeRegistry();
+  printRuntimeDiagnostics(runtime.diagnostics);
+
+  const integration = await resolveIntegration(subject, context, runtime.registry, options);
   if (!integration) {
     return;
   }
@@ -381,7 +627,7 @@ async function runRepair(subject: string, options: CliOptions): Promise<void> {
     return;
   }
 
-  await planConfirmApplyAndVerify(integration, context, options);
+  await planConfirmApplyAndVerify(integration, context, runtime.registry, options);
 }
 
 async function runAddInteractive(): Promise<void> {
@@ -394,8 +640,10 @@ async function runAddInteractive(): Promise<void> {
   console.log(formatDetectedProject(context));
   console.log("");
   console.log("Capabilities:");
-  for (const capability of builtInCapabilities) {
-    const compatible = registry.findCompatibleIntegrationsForCapability(
+  const runtime = await createRuntimeRegistry();
+  printRuntimeDiagnostics(runtime.diagnostics);
+  for (const capability of runtime.registry.findAvailableCapabilities(context)) {
+    const compatible = runtime.registry.findCompatibleIntegrationsForCapability(
       capability.id,
       context
     );
@@ -454,7 +702,7 @@ async function resolveIntegration(
   const capability = integrationRegistry.findCapabilityByQuery(subject);
   if (!capability) {
     console.error(`Unknown integration or capability: ${subject}`);
-    printKnownCommands();
+    printKnownCommands(integrationRegistry);
     process.exitCode = 1;
     return undefined;
   }
@@ -504,6 +752,7 @@ async function resolveIntegration(
 async function planConfirmApplyAndVerify(
   integration: AvisIntegration,
   context: ProjectContext,
+  integrationRegistry: IntegrationRegistry,
   options: CliOptions
 ): Promise<void> {
   const compatibility = integration.isCompatible(context);
@@ -514,7 +763,7 @@ async function planConfirmApplyAndVerify(
     return;
   }
 
-  const conflicts = await registry.findInstalledCapabilityConflicts(integration, context);
+  const conflicts = await integrationRegistry.findInstalledCapabilityConflicts(integration, context);
   if (conflicts.length > 0) {
     console.log("Conflict warnings:");
     for (const conflict of conflicts) {
@@ -576,13 +825,16 @@ async function runDoctor(options: CliOptions): Promise<void> {
     return;
   }
 
-  const entries = await collectDoctorEntries(context);
+  const runtime = await createRuntimeRegistry();
+  printRuntimeDiagnostics(runtime.diagnostics);
+
+  const entries = await collectDoctorEntries(context, runtime.registry);
   const state = await readAvisProjectState(context.targetRoot);
 
   if (options.json) {
     console.log(JSON.stringify(formatDoctorJson(context, entries, state), null, 2));
   } else {
-    printDoctorReport(context, entries, Object.keys(state.integrations));
+    printDoctorReport(context, entries, Object.keys(state.integrations), runtime.registry);
   }
 
   if (
@@ -593,8 +845,11 @@ async function runDoctor(options: CliOptions): Promise<void> {
   }
 }
 
-async function collectDoctorEntries(context: ProjectContext): Promise<DoctorEntry[]> {
-  const compatibleIntegrations = registry.integrations.filter(
+async function collectDoctorEntries(
+  context: ProjectContext,
+  integrationRegistry: IntegrationRegistry
+): Promise<DoctorEntry[]> {
+  const compatibleIntegrations = integrationRegistry.integrations.filter(
     (integration) => integration.isCompatible(context).supported && integration.verify
   );
 
@@ -615,7 +870,8 @@ async function collectDoctorEntries(context: ProjectContext): Promise<DoctorEntr
 function printDoctorReport(
   context: ProjectContext,
   entries: DoctorEntry[],
-  rememberedIntegrationIds: string[]
+  rememberedIntegrationIds: string[],
+  integrationRegistry: IntegrationRegistry
 ): void {
   console.log("Avis Project Health");
   console.log("");
@@ -624,7 +880,7 @@ function printDoctorReport(
   if (entries.length === 0) {
     console.log("");
     console.log("No compatible verifiers are available for this project yet.");
-    printSupportedTargets(registry);
+    printSupportedTargets(integrationRegistry);
     return;
   }
 
@@ -712,16 +968,21 @@ Usage:
   avis list
   avis search <query>
   avis show <integration|capability>
+  avis stack create <stack-id|path>
   avis stack list
-  avis stack show <stack>
-  avis stack use <stack>
+  avis stack show <stack|path>
+  avis stack use <stack|path>
   avis integration create <integration-id>
+  avis integration add <local-path>
+  avis integration list
   avis doctor [--json] [--strict]
 `);
 }
 
-function printSearch(query: string): void {
-  const results = registry.search(query);
+async function printSearch(query: string): Promise<void> {
+  const runtime = await createRuntimeRegistry();
+  printRuntimeDiagnostics(runtime.diagnostics);
+  const results = runtime.registry.search(query);
 
   console.log(`Search results for "${query}":`);
   if (results.length === 0) {
@@ -735,31 +996,37 @@ function printSearch(query: string): void {
   }
 }
 
-function printList(): void {
+async function printList(): Promise<void> {
+  const runtime = await createRuntimeRegistry();
+  printRuntimeDiagnostics(runtime.diagnostics);
+
   console.log("Capabilities:");
-  for (const capability of registry.capabilities) {
+  for (const capability of runtime.registry.capabilities) {
     console.log(`- ${capability.id}: ${capability.name}`);
   }
 
   console.log("");
   console.log("Integrations:");
-  for (const integration of registry.integrations) {
+  for (const integration of runtime.registry.integrations) {
     console.log(
       `- ${integration.manifest.id}: ${integration.manifest.name} (${integration.manifest.capability}, ${formatStatusLabel(integration.manifest.status)}, ${formatTrustLabel(integration.manifest.trust)})`
     );
   }
 }
 
-function printShow(subject: string): void {
-  const integration = registry.findIntegrationById(subject);
+async function printShow(subject: string): Promise<void> {
+  const runtime = await createRuntimeRegistry();
+  printRuntimeDiagnostics(runtime.diagnostics);
+
+  const integration = runtime.registry.findIntegrationById(subject);
   if (integration) {
     printIntegrationDetails(integration);
     return;
   }
 
-  const capability = registry.findCapabilityByQuery(subject);
+  const capability = runtime.registry.findCapabilityByQuery(subject);
   if (capability) {
-    const integrations = registry.integrations.filter(
+    const integrations = runtime.registry.integrations.filter(
       (candidate) => candidate.manifest.capability === capability.id
     );
 
@@ -793,7 +1060,7 @@ function printShow(subject: string): void {
   }
 
   console.error(`Unknown integration or capability: ${subject}`);
-  printKnownCommands();
+  printKnownCommands(runtime.registry);
   process.exitCode = 1;
 }
 
@@ -844,16 +1111,16 @@ function printIntegrationDetails(integration: AvisIntegration): void {
   }
 }
 
-function printKnownCommands(): void {
+function printKnownCommands(integrationRegistry: IntegrationRegistry): void {
   console.log("");
   console.log("Known capabilities:");
-  for (const capability of registry.capabilities) {
+  for (const capability of integrationRegistry.capabilities) {
     console.log(`- ${capability.id}`);
   }
 
   console.log("");
   console.log("Known integrations:");
-  for (const integration of registry.integrations) {
+  for (const integration of integrationRegistry.integrations) {
     console.log(`- ${integration.manifest.id}`);
   }
 }
@@ -879,6 +1146,8 @@ function printCapabilityRecommendations(
     console.log("");
     console.log(`${index + 1}. ${recommendation.integration.manifest.name} (${marker})`);
     console.log(`   ID: ${recommendation.integration.manifest.id}`);
+    console.log(`   Status: ${formatStatusLabel(recommendation.integration.manifest.status)}`);
+    console.log(`   Trust: ${formatTrustLabel(recommendation.integration.manifest.trust)}`);
     console.log(`   ${recommendation.integration.manifest.description}`);
     console.log("   Why:");
     for (const reason of recommendation.reasons) {
@@ -919,6 +1188,10 @@ function formatCapabilityDefaults(
     .join(", ");
 }
 
+function isStringArray(value: unknown): value is string[] {
+  return Array.isArray(value) && value.every((entry) => typeof entry === "string");
+}
+
 function formatStatusLabel(status: AvisIntegration["manifest"]["status"]): string {
   switch (status) {
     case "experimental":
@@ -938,6 +1211,8 @@ function formatTrustLabel(trust: AvisIntegration["manifest"]["trust"]): string {
       return "Verified";
     case "community":
       return "Community";
+    case "local":
+      return "Local";
     case "experimental":
       return "Experimental";
   }
@@ -1026,76 +1301,75 @@ function getOverallDoctorStatus(entries: DoctorEntry[]): VerificationResult["hea
 }
 
 function createManifestTemplate(integrationId: string): string {
-  return `import type { AvisIntegrationManifest } from "@avis/core";
-
-export const manifest = {
-  id: "${integrationId}",
-  name: "${toTitleCase(integrationId)}",
-  description: "Describe the project capability this integration provides.",
-  capability: "replace-with-capability-id",
-  version: "0.1.0",
-  status: "experimental",
-  trust: "community",
-  supports: {
-    ecosystems: ["node"]
-  },
-  dependencies: [],
-  configures: [],
-  source: {
-    owner: "community"
-  }
-} satisfies AvisIntegrationManifest;
-`;
+  return `${JSON.stringify(
+    {
+      id: integrationId,
+      name: toTitleCase(integrationId),
+      description: "Describe the project capability this integration provides.",
+      capability: "replace-with-capability-id",
+      version: "0.1.0",
+      status: "experimental",
+      trust: "local",
+      supports: {
+        ecosystems: ["node"],
+        frameworks: ["nextjs"],
+        packageManagers: ["npm", "pnpm", "yarn", "bun"]
+      },
+      dependencies: [],
+      configurationOptions: [],
+      configures: [],
+      repair: "unsupported",
+      documentation: {
+        quickstart: "README.md"
+      },
+      source: {
+        owner: "local"
+      }
+    },
+    null,
+    2
+  )}\n`;
 }
 
 function createPlanTemplate(integrationId: string): string {
-  return `import type { ChangePlan, IntegrationPlanRequest } from "@avis/core";
-import { manifest } from "./manifest.js";
-
-export async function plan({ context }: IntegrationPlanRequest): Promise<ChangePlan> {
-  return {
-    id: manifest.id,
-    title: "Add ${toTitleCase(integrationId)}",
-    integrationId: manifest.id,
-    target: context,
-    operations: [],
-    diagnostics: []
-  };
-}
-`;
+  return `${JSON.stringify(
+    {
+      title: `Add ${toTitleCase(integrationId)}`,
+      operations: []
+    },
+    null,
+    2
+  )}\n`;
 }
 
 function createVerifyTemplate(integrationId: string): string {
-  return `import type { ProjectContext, VerificationResult } from "@avis/core";
-import { manifest } from "./manifest.js";
-
-export async function verify(_context: ProjectContext): Promise<VerificationResult> {
-  return {
-    integrationId: manifest.id,
-    health: "unknown",
-    checks: [
-      {
-        id: "${integrationId}-manual-check",
-        label: "integration verification",
-        status: "skipped",
-        message: "Add project inspection checks before submitting this integration."
-      }
-    ],
-    diagnostics: []
-  };
-}
-`;
+  return `${JSON.stringify(
+    {
+      health: "unknown",
+      checks: [
+        {
+          id: `${integrationId}-manual-check`,
+          label: "integration verification",
+          status: "skipped",
+          message: "Add project inspection checks before relying on this integration."
+        }
+      ]
+    },
+    null,
+    2
+  )}\n`;
 }
 
 function createTestTemplate(integrationId: string): string {
-  return `import { describe, expect, it } from "vitest";
-import { manifest } from "../manifest.js";
+  return `# ${toTitleCase(integrationId)} Tests
 
-describe("${integrationId}", () => {
-  it("declares a capability", () => {
-    expect(manifest.capability).not.toBe("replace-with-capability-id");
-  });
-});
+Add fixture projects and regression notes here. Before sharing this integration, verify:
+
+- manifest capability is specific
+- support metadata matches real projects
+- ChangePlan operations are idempotent
+- every file path stays inside the target project
+- verification reflects installed, partial, and missing states
 `;
 }
 
@@ -1106,12 +1380,17 @@ Describe the capability this integration provides, the projects it supports, the
 
 Before this integration is ready, add:
 
-- manifest metadata
-- compatibility checks
-- ChangePlan generation
-- verifier checks
+- manifest metadata in \`${localIntegrationManifestFile}\`
+- safe ChangePlan operations in \`${localIntegrationPlanFile}\`
+- verifier checks in \`${localIntegrationVerifyFile}\`
 - fixtures
 - tests
+
+Register locally from a project root with:
+
+\`\`\`sh
+avis integration add ./${integrationId}
+\`\`\`
 `;
 }
 

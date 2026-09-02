@@ -1,3 +1,4 @@
+export * from "./custom-integrations/index.js";
 export * from "./detection/index.js";
 export * from "./ecosystems/index.js";
 export * from "./filesystem/index.js";

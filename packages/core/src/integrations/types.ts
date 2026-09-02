@@ -21,6 +21,7 @@ export interface Capability {
 export interface IntegrationSupport {
   ecosystems: EcosystemId[];
   frameworks?: FrameworkId[];
+  frameworkVersionConstraints?: Partial<Record<FrameworkId, string>>;
   packageManagers?: PackageManagerId[];
 }
 
@@ -29,6 +30,7 @@ export type IntegrationTrustLevel =
   | "official"
   | "verified"
   | "community"
+  | "local"
   | "experimental";
 
 export interface IntegrationDependencyRequirement {
@@ -42,9 +44,18 @@ export interface IntegrationDocumentation {
   quickstart?: string;
 }
 
+export interface IntegrationConfigurationOption {
+  id: string;
+  label: string;
+  description?: string;
+  required?: boolean;
+  defaultValue?: string | number | boolean;
+}
+
 export interface IntegrationSource {
-  owner: "avis" | "community";
+  owner: "avis" | "community" | "local";
   repository?: string;
+  path?: string;
 }
 
 export interface AvisIntegrationManifest {
@@ -57,7 +68,9 @@ export interface AvisIntegrationManifest {
   trust: IntegrationTrustLevel;
   supports: IntegrationSupport;
   dependencies?: IntegrationDependencyRequirement[];
+  configurationOptions?: IntegrationConfigurationOption[];
   configures?: string[];
+  repair?: "unsupported" | "plan";
   documentation?: IntegrationDocumentation;
   source?: IntegrationSource;
 }
