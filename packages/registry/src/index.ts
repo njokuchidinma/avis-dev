@@ -159,6 +159,15 @@ export class IntegrationRegistry {
     );
   }
 
+  findAvailableCapabilities(context: ProjectContext): Capability[] {
+    return this.capabilities.filter((capability) => {
+      return this.findCompatibleIntegrationsForCapability(
+        capability.id,
+        context
+      ).length > 0;
+    });
+  }
+
   findCompatibleIntegrationsForCapability(
     capabilityId: string,
     context: ProjectContext

@@ -4,9 +4,16 @@ import type {
   DetectionEvidence,
   DetectionResult,
   FrameworkMatch,
-  PackageManagerMatch
+  PackageManagerMatch,
+  ProjectTypeMatch
 } from "./types.js";
-import { ecosystems, frameworks, languages, packageManagers } from "../types/ids.js";
+import {
+  ecosystems,
+  frameworks,
+  languages,
+  packageManagers,
+  projectTypes
+} from "../types/ids.js";
 
 interface PythonProjectFiles {
   pyproject?: string;
@@ -40,6 +47,7 @@ export async function detectPythonProject(root: string): Promise<DetectionResult
   const projectEvidence = getPythonProjectEvidence(files);
   const packageManagerMatches = await detectPythonPackageManagers(root, files);
   const frameworkMatches = detectPythonFrameworks(files);
+  const projectTypeMatches = detectPythonProjectTypes(frameworkMatches);
 
   return {
     root,
@@ -55,13 +63,15 @@ export async function detectPythonProject(root: string): Promise<DetectionResult
         },
         languages: [languages.python],
         frameworks: frameworkMatches,
-        packageManagers: packageManagerMatches
+        packageManagers: packageManagerMatches,
+        projectTypes: projectTypeMatches
       }
     ],
     evidence: [
       ...projectEvidence,
       ...packageManagerMatches.flatMap((match) => match.evidence),
-      ...frameworkMatches.flatMap((match) => match.evidence)
+      ...frameworkMatches.flatMap((match) => match.evidence),
+      ...projectTypeMatches.flatMap((match) => match.evidence)
     ],
     diagnostics: []
   };
@@ -119,11 +129,12 @@ export async function detectPythonPackageManagers(
 }
 
 export function detectPythonFrameworks(files: PythonProjectFiles): FrameworkMatch[] {
-  const evidence: DetectionEvidence[] = [];
+  const matches: FrameworkMatch[] = [];
+  const djangoEvidence: DetectionEvidence[] = [];
   const dependencyText = `${files.pyproject ?? ""}\n${files.requirements ?? ""}`.toLowerCase();
 
   if (files.managePy !== undefined) {
-    evidence.push({
+    djangoEvidence.push({
       kind: "file",
       path: "manage.py",
       description: "Found Django manage.py."
@@ -131,22 +142,66 @@ export function detectPythonFrameworks(files: PythonProjectFiles): FrameworkMatc
   }
 
   if (dependencyText.includes("django")) {
-    evidence.push({
+    djangoEvidence.push({
       kind: files.pyproject ? "config" : "manifest",
       path: files.pyproject ? "pyproject.toml" : "requirements.txt",
       description: "Found Django dependency metadata."
     });
   }
 
-  if (evidence.length === 0) {
+  if (djangoEvidence.length > 0) {
+    matches.push({
+      id: frameworks.django,
+      confidence: files.managePy !== undefined ? "high" : "medium",
+      evidence: djangoEvidence
+    });
+  }
+
+  if (dependencyText.includes("fastapi")) {
+    matches.push({
+      id: frameworks.fastapi,
+      confidence: "high",
+      evidence: [
+        {
+          kind: files.pyproject ? "config" : "manifest",
+          path: files.pyproject ? "pyproject.toml" : "requirements.txt",
+          description: "Found FastAPI dependency metadata."
+        }
+      ]
+    });
+  }
+
+  if (dependencyText.includes("flask")) {
+    matches.push({
+      id: frameworks.flask,
+      confidence: "high",
+      evidence: [
+        {
+          kind: files.pyproject ? "config" : "manifest",
+          path: files.pyproject ? "pyproject.toml" : "requirements.txt",
+          description: "Found Flask dependency metadata."
+        }
+      ]
+    });
+  }
+
+  return matches;
+}
+
+export function detectPythonProjectTypes(
+  frameworkMatches: FrameworkMatch[]
+): ProjectTypeMatch[] {
+  if (frameworkMatches.length === 0) {
     return [];
   }
 
   return [
     {
-      id: frameworks.django,
-      confidence: files.managePy !== undefined ? "high" : "medium",
-      evidence
+      id: projectTypes.backend,
+      confidence: frameworkMatches.some((match) => match.confidence === "high")
+        ? "high"
+        : "medium",
+      evidence: frameworkMatches.flatMap((match) => match.evidence)
     }
   ];
 }

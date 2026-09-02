@@ -4,10 +4,22 @@ import type {
   DetectionEvidence,
   DetectionResult,
   FrameworkMatch,
-  PackageManagerMatch
+  PackageManagerMatch,
+  ProjectTypeMatch
 } from "./types.js";
-import { ecosystems, frameworks, languages, packageManagers } from "../types/ids.js";
-import type { LanguageId, PackageManagerId } from "../types/ids.js";
+import {
+  ecosystems,
+  frameworks,
+  languages,
+  packageManagers,
+  projectTypes
+} from "../types/ids.js";
+import type {
+  FrameworkId,
+  LanguageId,
+  PackageManagerId,
+  ProjectTypeId
+} from "../types/ids.js";
 
 interface PackageJson {
   name?: string;
@@ -16,6 +28,14 @@ interface PackageJson {
   devDependencies?: Record<string, string>;
   peerDependencies?: Record<string, string>;
   optionalDependencies?: Record<string, string>;
+  bin?: string | Record<string, string>;
+}
+
+interface NodeFrameworkDefinition {
+  id: FrameworkId;
+  dependencies: string[];
+  configFiles?: string[];
+  projectType: ProjectTypeId;
 }
 
 const nodePackageManagerLockfiles: Record<string, PackageManagerId> = {
@@ -28,6 +48,67 @@ const nodePackageManagerLockfiles: Record<string, PackageManagerId> = {
 };
 
 const knownPackageManagerIds = new Set<string>(Object.values(packageManagers));
+
+const nodeFrameworkDefinitions: NodeFrameworkDefinition[] = [
+  {
+    id: frameworks.nextjs,
+    dependencies: ["next"],
+    configFiles: ["next.config.js", "next.config.mjs", "next.config.ts"],
+    projectType: projectTypes.fullstack
+  },
+  {
+    id: frameworks.expo,
+    dependencies: ["expo"],
+    projectType: projectTypes.mobile
+  },
+  {
+    id: frameworks.reactNative,
+    dependencies: ["react-native"],
+    projectType: projectTypes.mobile
+  },
+  {
+    id: frameworks.nestjs,
+    dependencies: ["@nestjs/core"],
+    projectType: projectTypes.backend
+  },
+  {
+    id: frameworks.express,
+    dependencies: ["express"],
+    projectType: projectTypes.backend
+  },
+  {
+    id: frameworks.fastify,
+    dependencies: ["fastify"],
+    projectType: projectTypes.backend
+  },
+  {
+    id: frameworks.nuxt,
+    dependencies: ["nuxt"],
+    configFiles: ["nuxt.config.js", "nuxt.config.mjs", "nuxt.config.ts"],
+    projectType: projectTypes.fullstack
+  },
+  {
+    id: frameworks.vue,
+    dependencies: ["vue"],
+    projectType: projectTypes.frontend
+  },
+  {
+    id: frameworks.sveltekit,
+    dependencies: ["@sveltejs/kit"],
+    configFiles: ["svelte.config.js"],
+    projectType: projectTypes.fullstack
+  },
+  {
+    id: frameworks.svelte,
+    dependencies: ["svelte"],
+    projectType: projectTypes.frontend
+  },
+  {
+    id: frameworks.react,
+    dependencies: ["react"],
+    projectType: projectTypes.frontend
+  }
+];
 
 export async function detectNodeProject(root: string): Promise<DetectionResult> {
   const packageJsonPath = path.join(root, "package.json");
@@ -57,6 +138,7 @@ export async function detectNodeProject(root: string): Promise<DetectionResult> 
   const packageManagerMatches = await detectNodePackageManagers(root, packageJson);
   const frameworkMatches = await detectNodeFrameworks(root, packageJson);
   const languageMatches = await detectNodeLanguages(root, packageJson);
+  const projectTypeMatches = detectNodeProjectTypes(packageJson, frameworkMatches);
 
   return {
     root,
@@ -72,13 +154,15 @@ export async function detectNodeProject(root: string): Promise<DetectionResult> 
         },
         languages: languageMatches,
         frameworks: frameworkMatches,
-        packageManagers: packageManagerMatches
+        packageManagers: packageManagerMatches,
+        projectTypes: projectTypeMatches
       }
     ],
     evidence: [
       packageJsonEvidence,
       ...packageManagerMatches.flatMap((match) => match.evidence),
-      ...frameworkMatches.flatMap((match) => match.evidence)
+      ...frameworkMatches.flatMap((match) => match.evidence),
+      ...projectTypeMatches.flatMap((match) => match.evidence)
     ],
     diagnostics: []
   };
@@ -132,43 +216,13 @@ export async function detectNodeFrameworks(
   packageJson: PackageJson
 ): Promise<FrameworkMatch[]> {
   const dependencies = getAllDependencies(packageJson);
-  const nextVersion = dependencies.get("next");
-  const nextConfigEvidence = await findFirstExisting(root, [
-    "next.config.js",
-    "next.config.mjs",
-    "next.config.ts"
-  ]);
+  const matches = await Promise.all(
+    nodeFrameworkDefinitions.map(async (definition) =>
+      detectNodeFramework(root, dependencies, definition)
+    )
+  );
 
-  if (!nextVersion && !nextConfigEvidence) {
-    return [];
-  }
-
-  const evidence: DetectionEvidence[] = [];
-
-  if (nextVersion) {
-    evidence.push({
-      kind: "package-json",
-      path: "package.json",
-      description: "Found next dependency."
-    });
-  }
-
-  if (nextConfigEvidence) {
-    evidence.push({
-      kind: "config",
-      path: nextConfigEvidence,
-      description: "Found Next.js config file."
-    });
-  }
-
-  return [
-    {
-      id: frameworks.nextjs,
-      version: nextVersion,
-      confidence: nextVersion ? "high" : "medium",
-      evidence
-    }
-  ];
+  return matches.filter((match): match is FrameworkMatch => match !== undefined);
 }
 
 export async function detectNodeLanguages(
@@ -183,6 +237,43 @@ export async function detectNodeLanguages(
   }
 
   return [languages.javascript];
+}
+
+export function detectNodeProjectTypes(
+  packageJson: PackageJson,
+  frameworkMatches: FrameworkMatch[]
+): ProjectTypeMatch[] {
+  const frameworkTypes = new Map<FrameworkId, ProjectTypeId>(
+    nodeFrameworkDefinitions.map((definition) => [definition.id, definition.projectType])
+  );
+  const matches = new Map<ProjectTypeId, ProjectTypeMatch>();
+
+  for (const frameworkMatch of frameworkMatches) {
+    const projectType = frameworkTypes.get(frameworkMatch.id);
+    if (!projectType) {
+      continue;
+    }
+
+    addProjectTypeMatch(matches, projectType, {
+      confidence: frameworkMatch.confidence,
+      evidence: frameworkMatch.evidence
+    });
+  }
+
+  if (matches.size === 0 && packageJson.bin) {
+    addProjectTypeMatch(matches, projectTypes.cli, {
+      confidence: "medium",
+      evidence: [
+        {
+          kind: "package-json",
+          path: "package.json",
+          description: "Found package.json bin entry."
+        }
+      ]
+    });
+  }
+
+  return Array.from(matches.values()).sort(compareProjectTypeMatches);
 }
 
 function addPackageManagerMatch(
@@ -250,6 +341,47 @@ async function findFirstExisting(
   return undefined;
 }
 
+async function detectNodeFramework(
+  root: string,
+  dependencies: Map<string, string>,
+  definition: NodeFrameworkDefinition
+): Promise<FrameworkMatch | undefined> {
+  const dependency = definition.dependencies.find((name) => dependencies.has(name));
+  const version = dependency ? dependencies.get(dependency) : undefined;
+  const configFile = definition.configFiles
+    ? await findFirstExisting(root, definition.configFiles)
+    : undefined;
+
+  if (!dependency && !configFile) {
+    return undefined;
+  }
+
+  const evidence: DetectionEvidence[] = [];
+
+  if (dependency) {
+    evidence.push({
+      kind: "package-json",
+      path: "package.json",
+      description: `Found ${dependency} dependency.`
+    });
+  }
+
+  if (configFile) {
+    evidence.push({
+      kind: "config",
+      path: configFile,
+      description: `Found ${definition.id} config file.`
+    });
+  }
+
+  return {
+    id: definition.id,
+    version,
+    confidence: dependency ? "high" : "medium",
+    evidence
+  };
+}
+
 async function readPackageJson(filePath: string): Promise<PackageJson> {
   const contents = await readFile(filePath, "utf8");
   return JSON.parse(contents) as PackageJson;
@@ -267,6 +399,36 @@ async function pathExists(filePath: string): Promise<boolean> {
 function compareMatches(
   left: PackageManagerMatch,
   right: PackageManagerMatch
+): number {
+  const confidenceRank = { high: 0, medium: 1, low: 2 };
+  return confidenceRank[left.confidence] - confidenceRank[right.confidence];
+}
+
+function addProjectTypeMatch(
+  matches: Map<ProjectTypeId, ProjectTypeMatch>,
+  id: ProjectTypeId,
+  match: Omit<ProjectTypeMatch, "id">
+): void {
+  const existing = matches.get(id);
+
+  if (!existing) {
+    matches.set(id, { id, ...match });
+    return;
+  }
+
+  matches.set(id, {
+    id,
+    confidence:
+      existing.confidence === "high" || match.confidence === "high"
+        ? "high"
+        : existing.confidence,
+    evidence: [...existing.evidence, ...match.evidence]
+  });
+}
+
+function compareProjectTypeMatches(
+  left: ProjectTypeMatch,
+  right: ProjectTypeMatch
 ): number {
   const confidenceRank = { high: 0, medium: 1, low: 2 };
   return confidenceRank[left.confidence] - confidenceRank[right.confidence];

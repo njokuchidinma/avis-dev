@@ -22,6 +22,26 @@ describe("IntegrationRegistry", () => {
     expect(registry.findCompatibleIntegrations(unknownNodeContext)).toEqual([]);
   });
 
+  it("finds only relevant capabilities with compatible integrations", () => {
+    const registry = new IntegrationRegistry({
+      capabilities: [
+        {
+          id: "icons",
+          name: "Icons"
+        },
+        {
+          id: "database",
+          name: "Database"
+        }
+      ],
+      integrations: [lucideReactIntegration]
+    });
+
+    expect(registry.findAvailableCapabilities(nextContext).map((capability) => capability.id)).toEqual([
+      "icons"
+    ]);
+  });
+
   it("groups integrations by supported ecosystem and framework", () => {
     const registry = new IntegrationRegistry({
       capabilities: [],

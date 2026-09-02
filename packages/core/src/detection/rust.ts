@@ -3,9 +3,17 @@ import path from "node:path";
 import type {
   DetectionEvidence,
   DetectionResult,
-  PackageManagerMatch
+  FrameworkMatch,
+  PackageManagerMatch,
+  ProjectTypeMatch
 } from "./types.js";
-import { ecosystems, languages, packageManagers } from "../types/ids.js";
+import {
+  ecosystems,
+  frameworks,
+  languages,
+  packageManagers,
+  projectTypes
+} from "../types/ids.js";
 
 export async function detectRustProject(root: string): Promise<DetectionResult> {
   const cargoTomlPath = path.join(root, "Cargo.toml");
@@ -31,6 +39,8 @@ export async function detectRustProject(root: string): Promise<DetectionResult> 
     description: "Found Cargo package manifest."
   };
   const packageManagerMatches = await detectRustPackageManagers(root);
+  const frameworkMatches = detectRustFrameworks(cargoToml);
+  const projectTypeMatches = detectRustProjectTypes(cargoToml, frameworkMatches);
 
   return {
     root,
@@ -45,16 +55,89 @@ export async function detectRustProject(root: string): Promise<DetectionResult> 
           evidence: [projectEvidence]
         },
         languages: [languages.rust],
-        frameworks: [],
-        packageManagers: packageManagerMatches
+        frameworks: frameworkMatches,
+        packageManagers: packageManagerMatches,
+        projectTypes: projectTypeMatches
       }
     ],
     evidence: [
       projectEvidence,
-      ...packageManagerMatches.flatMap((match) => match.evidence)
+      ...packageManagerMatches.flatMap((match) => match.evidence),
+      ...frameworkMatches.flatMap((match) => match.evidence),
+      ...projectTypeMatches.flatMap((match) => match.evidence)
     ],
     diagnostics: []
   };
+}
+
+export function detectRustFrameworks(cargoToml: string): FrameworkMatch[] {
+  const dependencies = getCargoDependencies(cargoToml);
+  const matches: FrameworkMatch[] = [];
+
+  if (dependencies.has("axum")) {
+    matches.push({
+      id: frameworks.axum,
+      version: dependencies.get("axum"),
+      confidence: "high",
+      evidence: [
+        {
+          kind: "manifest",
+          path: "Cargo.toml",
+          description: "Found axum crate dependency."
+        }
+      ]
+    });
+  }
+
+  if (dependencies.has("actix-web")) {
+    matches.push({
+      id: frameworks.actixWeb,
+      version: dependencies.get("actix-web"),
+      confidence: "high",
+      evidence: [
+        {
+          kind: "manifest",
+          path: "Cargo.toml",
+          description: "Found actix-web crate dependency."
+        }
+      ]
+    });
+  }
+
+  return matches;
+}
+
+export function detectRustProjectTypes(
+  cargoToml: string,
+  frameworkMatches: FrameworkMatch[]
+): ProjectTypeMatch[] {
+  if (frameworkMatches.length > 0) {
+    return [
+      {
+        id: projectTypes.backend,
+        confidence: "high",
+        evidence: frameworkMatches.flatMap((match) => match.evidence)
+      }
+    ];
+  }
+
+  if (getCargoDependencies(cargoToml).has("clap")) {
+    return [
+      {
+        id: projectTypes.cli,
+        confidence: "high",
+        evidence: [
+          {
+            kind: "manifest",
+            path: "Cargo.toml",
+            description: "Found clap crate dependency."
+          }
+        ]
+      }
+    ];
+  }
+
+  return [];
 }
 
 export async function detectRustPackageManagers(
@@ -79,6 +162,30 @@ export async function detectRustPackageManagers(
 
 function getCargoPackageName(cargoToml: string): string | undefined {
   return cargoToml.match(/^\s*name\s*=\s*"([^"]+)"\s*$/m)?.[1];
+}
+
+function getCargoDependencies(cargoToml: string): Map<string, string | undefined> {
+  const dependencies = new Map<string, string | undefined>();
+  let inDependencySection = false;
+
+  for (const line of cargoToml.split("\n")) {
+    const trimmed = line.trim();
+    if (/^\[.+\]$/.test(trimmed)) {
+      inDependencySection = trimmed === "[dependencies]";
+      continue;
+    }
+
+    if (!inDependencySection) {
+      continue;
+    }
+
+    const match = line.trim().match(/^([A-Za-z0-9_-]+)\s*=\s*(?:"([^"]+)"|\{)/);
+    if (match) {
+      dependencies.set(match[1], match[2]);
+    }
+  }
+
+  return dependencies;
 }
 
 async function readOptionalFile(filePath: string): Promise<string | undefined> {

@@ -1,5 +1,7 @@
 export * from "./detection/index.js";
+export * from "./ecosystems/index.js";
 export * from "./filesystem/index.js";
+export * from "./frameworks/index.js";
 export * from "./integrations/index.js";
 export * from "./package-managers/index.js";
 export * from "./planning/index.js";

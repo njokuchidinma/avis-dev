@@ -87,6 +87,149 @@ export const builtInCapabilities: Capability[] = [
     defaultIntegrations: {
       [ecosystems.node]: "lucide-react"
     }
+  },
+  {
+    id: "authorization",
+    name: "Authorization",
+    description: "Role, permission, and access-policy support."
+  },
+  {
+    id: "api-documentation",
+    name: "API Documentation",
+    description: "OpenAPI, schema, and API reference tooling.",
+    aliases: ["openapi", "swagger"]
+  },
+  {
+    id: "routing",
+    name: "Routing",
+    description: "Application navigation and request routing."
+  },
+  {
+    id: "networking",
+    name: "Networking",
+    description: "HTTP clients and network request helpers."
+  },
+  {
+    id: "database",
+    name: "Database",
+    description: "Database clients and persistence setup."
+  },
+  {
+    id: "orm",
+    name: "ORM",
+    description: "Object-relational mapping and query builders."
+  },
+  {
+    id: "migrations",
+    name: "Migrations",
+    description: "Database schema migration tooling."
+  },
+  {
+    id: "caching",
+    name: "Caching",
+    description: "Application cache clients and cache configuration."
+  },
+  {
+    id: "background-jobs",
+    name: "Background Jobs",
+    description: "Asynchronous work processing.",
+    aliases: ["jobs", "workers"]
+  },
+  {
+    id: "queues",
+    name: "Queues",
+    description: "Queue-backed task processing."
+  },
+  {
+    id: "messaging",
+    name: "Messaging",
+    description: "Message broker and event-stream integrations."
+  },
+  {
+    id: "logging",
+    name: "Logging",
+    description: "Structured application logging."
+  },
+  {
+    id: "monitoring",
+    name: "Monitoring",
+    description: "Runtime health, metrics, and error monitoring."
+  },
+  {
+    id: "storage",
+    name: "Storage",
+    description: "Object, file, and media storage integrations."
+  },
+  {
+    id: "local-storage",
+    name: "Local Storage",
+    description: "Device-local persistence."
+  },
+  {
+    id: "secure-storage",
+    name: "Secure Storage",
+    description: "Encrypted or platform-secure local persistence."
+  },
+  {
+    id: "email",
+    name: "Email",
+    description: "Transactional email delivery."
+  },
+  {
+    id: "payments",
+    name: "Payments",
+    description: "Payment provider and checkout integrations."
+  },
+  {
+    id: "internationalization",
+    name: "Internationalization",
+    description: "Localization and translation tooling.",
+    aliases: ["i18n", "localization"]
+  },
+  {
+    id: "analytics",
+    name: "Analytics",
+    description: "Product and usage analytics."
+  },
+  {
+    id: "notifications",
+    name: "Notifications",
+    description: "Push, local, and user notification support."
+  },
+  {
+    id: "configuration",
+    name: "Configuration",
+    description: "Application settings and environment configuration."
+  },
+  {
+    id: "security",
+    name: "Security",
+    description: "Security hardening and guardrail tooling."
+  },
+  {
+    id: "serialization",
+    name: "Serialization",
+    description: "Data serialization and DTO generation."
+  },
+  {
+    id: "code-generation",
+    name: "Code Generation",
+    description: "Project-native generated code workflows."
+  },
+  {
+    id: "cli",
+    name: "CLI",
+    description: "Command-line application tooling."
+  },
+  {
+    id: "error-handling",
+    name: "Error Handling",
+    description: "Error modeling and propagation utilities."
+  },
+  {
+    id: "crash-reporting",
+    name: "Crash Reporting",
+    description: "Mobile and client crash visibility."
   }
 ];
 
