@@ -17,6 +17,9 @@ import {
   localIntegrationPlanFile,
   localIntegrationRegistryPath,
   localIntegrationVerifyFile,
+  inspectPackagedIntegration,
+  installPackagedIntegration,
+  packageLocalIntegration,
   recordAppliedIntegrationPlan,
   readAvisProjectState,
   readLocalIntegrationRegistry,
@@ -26,6 +29,7 @@ import {
   validateChangePlan,
   type AvisIntegration,
   type Diagnostic,
+  type PackagedIntegration,
   type ProjectContext,
   type VerificationResult
 } from "@avis/core";
@@ -196,9 +200,83 @@ async function runIntegrationCommand(
       await printLocalIntegrationList();
       return;
 
+    case "package":
+      if (!value) {
+        console.error("Usage: avis integration package <local-path>");
+        process.exitCode = 1;
+        return;
+      }
+      await packageIntegration(value);
+      return;
+
+    case "inspect":
+      if (!value) {
+        console.error("Usage: avis integration inspect <package-path>");
+        process.exitCode = 1;
+        return;
+      }
+      await inspectIntegrationPackage(value);
+      return;
+
+    case "install":
+      if (!value) {
+        console.error("Usage: avis integration install <package-path>");
+        process.exitCode = 1;
+        return;
+      }
+      await installIntegrationPackage(value);
+      return;
+
     default:
-      console.error("Usage: avis integration <create|add|list>");
+      console.error("Usage: avis integration <create|add|list|package|inspect|install>");
       process.exitCode = 1;
+  }
+}
+
+async function packageIntegration(integrationPath: string): Promise<void> {
+  const result = await packageLocalIntegration(process.cwd(), integrationPath);
+
+  console.log(`Created integration package: ${result.packagePath}`);
+  printPackagedIntegrationReview(result.packagedIntegration);
+}
+
+async function inspectIntegrationPackage(packagePath: string): Promise<void> {
+  const packagedIntegration = await inspectPackagedIntegration(process.cwd(), packagePath);
+  printPackagedIntegrationReview(packagedIntegration);
+
+  if (!packagedIntegration.securityReview.passed) {
+    process.exitCode = 1;
+  }
+}
+
+async function installIntegrationPackage(packagePath: string): Promise<void> {
+  const installPath = await installPackagedIntegration(process.cwd(), packagePath);
+  console.log(`Installed packaged integration: ${installPath}`);
+  console.log(`Registry: ${localIntegrationRegistryPath}`);
+}
+
+function printPackagedIntegrationReview(packagedIntegration: PackagedIntegration): void {
+  console.log("");
+  console.log(packagedIntegration.manifest.name);
+  console.log(packagedIntegration.manifest.description);
+  console.log("");
+  console.log("Package");
+  console.log(`- Format: ${packagedIntegration.format}`);
+  console.log(`- ID: ${packagedIntegration.manifest.id}`);
+  console.log(`- Version: ${packagedIntegration.manifest.version}`);
+  console.log(`- Trust: ${formatTrustLabel(packagedIntegration.manifest.trust)}`);
+  console.log(`- Integrity: sha256:${packagedIntegration.integrity.digest}`);
+  console.log("");
+  console.log("Security Review");
+  console.log(`- Passed: ${packagedIntegration.securityReview.passed ? "yes" : "no"}`);
+
+  if (packagedIntegration.securityReview.findings.length === 0) {
+    console.log("- Findings: none");
+    return;
+  }
+
+  for (const finding of packagedIntegration.securityReview.findings) {
+    console.log(`- ${finding.severity}: ${finding.message}`);
   }
 }
 
@@ -975,6 +1053,9 @@ Usage:
   avis integration create <integration-id>
   avis integration add <local-path>
   avis integration list
+  avis integration package <local-path>
+  avis integration inspect <package-path>
+  avis integration install <package-path>
   avis doctor [--json] [--strict]
 `);
 }
