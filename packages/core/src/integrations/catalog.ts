@@ -1,5 +1,9 @@
+import { axumTowerHttpIntegration } from "./axum-tower-http.js";
 import { flutterRiverpodIntegration } from "./flutter-riverpod.js";
 import { djangoRestFrameworkIntegration } from "./django-rest-framework.js";
+import { expoSecureStoreIntegration } from "./expo-secure-store.js";
+import { fastapiPydanticSettingsIntegration } from "./fastapi-pydantic-settings.js";
+import { ginValidatorIntegration } from "./gin-validator.js";
 import { heroiconsReactIntegration } from "./heroicons-react.js";
 import { laravelSanctumIntegration } from "./laravel-sanctum.js";
 import { lucideReactIntegration } from "./lucide-react.js";
@@ -7,6 +11,7 @@ import type { ProjectContext } from "../types/project-context.js";
 import { ecosystems } from "../types/ids.js";
 import { reactHookFormIntegration } from "./react-hook-form.js";
 import { reactIconsIntegration } from "./react-icons.js";
+import { reactRouterDomIntegration } from "./react-router-dom.js";
 import { reduxToolkitIntegration } from "./redux-toolkit.js";
 import { rustTracingIntegration } from "./rust-tracing.js";
 import { tanstackQueryIntegration } from "./tanstack-query.js";
@@ -40,7 +45,8 @@ export const builtInCapabilities: Capability[] = [
     description: "API framework extensions and tooling.",
     aliases: ["api-tooling", "rest-api"],
     defaultIntegrations: {
-      [ecosystems.python]: "django-rest-framework"
+      [ecosystems.python]: "django-rest-framework",
+      [ecosystems.rust]: "axum-tower-http"
     }
   },
   {
@@ -58,7 +64,8 @@ export const builtInCapabilities: Capability[] = [
     description: "Runtime schema validation.",
     aliases: ["schemas", "schema-validation"],
     defaultIntegrations: {
-      [ecosystems.node]: "zod"
+      [ecosystems.node]: "zod",
+      [ecosystems.go]: "gin-validator"
     }
   },
   {
@@ -102,7 +109,10 @@ export const builtInCapabilities: Capability[] = [
   {
     id: "routing",
     name: "Routing",
-    description: "Application navigation and request routing."
+    description: "Application navigation and request routing.",
+    defaultIntegrations: {
+      [ecosystems.node]: "react-router-dom"
+    }
   },
   {
     id: "networking",
@@ -168,7 +178,10 @@ export const builtInCapabilities: Capability[] = [
   {
     id: "secure-storage",
     name: "Secure Storage",
-    description: "Encrypted or platform-secure local persistence."
+    description: "Encrypted or platform-secure local persistence.",
+    defaultIntegrations: {
+      [ecosystems.node]: "expo-secure-store"
+    }
   },
   {
     id: "email",
@@ -199,7 +212,10 @@ export const builtInCapabilities: Capability[] = [
   {
     id: "configuration",
     name: "Configuration",
-    description: "Application settings and environment configuration."
+    description: "Application settings and environment configuration.",
+    defaultIntegrations: {
+      [ecosystems.python]: "fastapi-pydantic-settings"
+    }
   },
   {
     id: "security",
@@ -245,7 +261,12 @@ export const builtInIntegrations: AvisIntegration[] = [
   rustTracingIntegration,
   lucideReactIntegration,
   reactIconsIntegration,
-  heroiconsReactIntegration
+  heroiconsReactIntegration,
+  reactRouterDomIntegration,
+  fastapiPydanticSettingsIntegration,
+  expoSecureStoreIntegration,
+  axumTowerHttpIntegration,
+  ginValidatorIntegration
 ];
 
 export function findIntegrationById(id: string): AvisIntegration | undefined {
