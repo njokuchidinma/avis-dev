@@ -1,12 +1,16 @@
 import { axumTowerHttpIntegration } from "./axum-tower-http.js";
 import { flutterRiverpodIntegration } from "./flutter-riverpod.js";
+import { djangoCorsHeadersIntegration } from "./django-cors-headers.js";
 import { djangoRestFrameworkIntegration } from "./django-rest-framework.js";
 import { expoSecureStoreIntegration } from "./expo-secure-store.js";
 import { fastapiPydanticSettingsIntegration } from "./fastapi-pydantic-settings.js";
+import { flutterGoRouterIntegration } from "./flutter-go-router.js";
 import { ginValidatorIntegration } from "./gin-validator.js";
 import { heroiconsReactIntegration } from "./heroicons-react.js";
+import { laravelPestIntegration } from "./laravel-pest.js";
 import { laravelSanctumIntegration } from "./laravel-sanctum.js";
 import { lucideReactIntegration } from "./lucide-react.js";
+import { nextAuthIntegration } from "./next-auth.js";
 import type { ProjectContext } from "../types/project-context.js";
 import { ecosystems } from "../types/ids.js";
 import { reactHookFormIntegration } from "./react-hook-form.js";
@@ -74,6 +78,7 @@ export const builtInCapabilities: Capability[] = [
     description: "Authentication and API access control.",
     aliases: ["authentication", "api-auth", "access-control"],
     defaultIntegrations: {
+      [ecosystems.node]: "next-auth",
       [ecosystems.php]: "laravel-sanctum"
     }
   },
@@ -111,7 +116,8 @@ export const builtInCapabilities: Capability[] = [
     name: "Routing",
     description: "Application navigation and request routing.",
     defaultIntegrations: {
-      [ecosystems.node]: "react-router-dom"
+      [ecosystems.node]: "react-router-dom",
+      [ecosystems.dart]: "flutter-go-router"
     }
   },
   {
@@ -220,7 +226,18 @@ export const builtInCapabilities: Capability[] = [
   {
     id: "security",
     name: "Security",
-    description: "Security hardening and guardrail tooling."
+    description: "Security hardening and guardrail tooling.",
+    defaultIntegrations: {
+      [ecosystems.python]: "django-cors-headers"
+    }
+  },
+  {
+    id: "testing",
+    name: "Testing",
+    description: "Project-native test framework setup and starter tests.",
+    defaultIntegrations: {
+      [ecosystems.php]: "laravel-pest"
+    }
   },
   {
     id: "serialization",
@@ -259,6 +276,10 @@ export const builtInIntegrations: AvisIntegration[] = [
   laravelSanctumIntegration,
   flutterRiverpodIntegration,
   rustTracingIntegration,
+  nextAuthIntegration,
+  djangoCorsHeadersIntegration,
+  laravelPestIntegration,
+  flutterGoRouterIntegration,
   lucideReactIntegration,
   reactIconsIntegration,
   heroiconsReactIntegration,

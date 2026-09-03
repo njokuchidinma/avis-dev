@@ -9,15 +9,17 @@ import {
 } from "./django-settings.js";
 import type { AvisIntegration, CompatibilityResult } from "./types.js";
 
-const packageName = "djangorestframework";
-const settingsApp = "rest_framework";
+const integrationId = "django-cors-headers";
+const packageName = "django-cors-headers";
+const settingsApp = "corsheaders";
+const middlewareName = "corsheaders.middleware.CorsMiddleware";
 
-export const djangoRestFrameworkIntegration: AvisIntegration = {
+export const djangoCorsHeadersIntegration: AvisIntegration = {
   manifest: {
-    id: "django-rest-framework",
-    name: "Django REST Framework",
-    description: "API toolkit for Django projects.",
-    capability: "api",
+    id: integrationId,
+    name: "django-cors-headers",
+    description: "CORS middleware and settings integration for Django applications.",
+    capability: "security",
     version: "1.0.0",
     status: "stable",
     trust: "official",
@@ -27,12 +29,16 @@ export const djangoRestFrameworkIntegration: AvisIntegration = {
       packageManagers: [packageManagers.pip, packageManagers.uv, packageManagers.poetry]
     },
     dependencies: [{ name: packageName, type: "runtime" }],
-    configures: ["runtime dependency", "rest_framework installed app"],
+    configures: [
+      "runtime dependency",
+      "corsheaders installed app",
+      "CORS middleware"
+    ],
     source: { owner: "avis" }
   },
-  isCompatible: isDjangoRestFrameworkCompatible,
+  isCompatible: isDjangoCorsHeadersCompatible,
   plan: async ({ context }): Promise<ChangePlan> => {
-    const compatibility = isDjangoRestFrameworkCompatible(context);
+    const compatibility = isDjangoCorsHeadersCompatible(context);
     if (!compatibility.supported) {
       return incompatiblePlan(context, compatibility.reason);
     }
@@ -44,37 +50,52 @@ export const djangoRestFrameworkIntegration: AvisIntegration = {
       packageName
     );
     const settingsPath = await findDjangoSettingsPath(context.targetRoot);
-    const settingsConfigured = settingsPath
+    const appConfigured = settingsPath
       ? await djangoSettingsIncludesValue(context.targetRoot, settingsPath, settingsApp)
+      : false;
+    const middlewareConfigured = settingsPath
+      ? await djangoSettingsIncludesValue(context.targetRoot, settingsPath, middlewareName)
       : false;
 
     return {
-      id: "django-rest-framework",
-      title: "Add Django REST Framework",
-      integrationId: "django-rest-framework",
+      id: integrationId,
+      title: "Add django-cors-headers",
+      integrationId,
       target: context,
       operations: [
         ...(dependencyInstalled
           ? []
           : [
               {
-                id: "add-django-rest-framework",
+                id: "add-django-cors-headers",
                 type: "dependency.add" as const,
-                description: "Install Django REST Framework.",
+                description: "Install django-cors-headers.",
                 dependencyType: "runtime" as const,
                 packageManager: packageManagerId,
                 packages: [{ name: packageName }]
               }
             ]),
-        ...(settingsPath && !settingsConfigured
+        ...(settingsPath && !appConfigured
           ? [
               {
-                id: "configure-drf-installed-app",
+                id: "configure-cors-installed-app",
                 type: "text.patch" as const,
-                description: "Add rest_framework to INSTALLED_APPS.",
+                description: "Add corsheaders to INSTALLED_APPS.",
                 path: settingsPath,
                 search: "INSTALLED_APPS = [",
                 replace: `INSTALLED_APPS = [\n    "${settingsApp}",`
+              }
+            ]
+          : []),
+        ...(settingsPath && !middlewareConfigured
+          ? [
+              {
+                id: "configure-cors-middleware",
+                type: "text.patch" as const,
+                description: "Add CORS middleware near the top of MIDDLEWARE.",
+                path: settingsPath,
+                search: "MIDDLEWARE = [",
+                replace: `MIDDLEWARE = [\n    "${middlewareName}",`
               }
             ]
           : [])
@@ -89,21 +110,21 @@ export const djangoRestFrameworkIntegration: AvisIntegration = {
           ]
     };
   },
-  verify: verifyDjangoRestFramework
+  verify: verifyDjangoCorsHeaders
 };
 
-function isDjangoRestFrameworkCompatible(context: ProjectContext): CompatibilityResult {
+function isDjangoCorsHeadersCompatible(context: ProjectContext): CompatibilityResult {
   if (context.ecosystem !== ecosystems.python) {
     return {
       supported: false,
-      reason: "Django REST Framework integration supports Python projects only."
+      reason: "django-cors-headers supports Python projects only."
     };
   }
 
   if (context.framework?.id !== frameworks.django) {
     return {
       supported: false,
-      reason: "Django REST Framework integration requires a detected Django project."
+      reason: "django-cors-headers requires a detected Django project."
     };
   }
 
@@ -119,9 +140,9 @@ function isDjangoRestFrameworkCompatible(context: ProjectContext): Compatibility
 
 function incompatiblePlan(context: ProjectContext, reason: string): ChangePlan {
   return {
-    id: "django-rest-framework",
-    title: "Add Django REST Framework",
-    integrationId: "django-rest-framework",
+    id: integrationId,
+    title: "Add django-cors-headers",
+    integrationId,
     target: context,
     operations: [],
     diagnostics: [
@@ -133,7 +154,7 @@ function incompatiblePlan(context: ProjectContext, reason: string): ChangePlan {
   };
 }
 
-async function verifyDjangoRestFramework(
+async function verifyDjangoCorsHeaders(
   context: ProjectContext
 ): Promise<VerificationResult> {
   const packageManager = createPythonPackageManagerAdapter(
@@ -144,37 +165,53 @@ async function verifyDjangoRestFramework(
     packageName
   );
   const settingsPath = await findDjangoSettingsPath(context.targetRoot);
-  const settingsConfigured = settingsPath
+  const appConfigured = settingsPath
     ? await djangoSettingsIncludesValue(context.targetRoot, settingsPath, settingsApp)
+    : false;
+  const middlewareConfigured = settingsPath
+    ? await djangoSettingsIncludesValue(context.targetRoot, settingsPath, middlewareName)
     : false;
   const checks = [
     {
-      id: "drf-dependency",
+      id: "django-cors-headers-dependency",
       label: "dependency installed",
       status: dependencyInstalled ? "pass" : "skipped",
       message: dependencyInstalled ? undefined : `${packageName} is not installed.`,
       remediation: dependencyInstalled
         ? undefined
-        : "Run avis add django-rest-framework."
+        : "Run avis add django-cors-headers."
     },
     {
-      id: "drf-installed-app",
-      label: "rest_framework configured",
-      status: settingsConfigured ? "pass" : dependencyInstalled ? "warning" : "skipped",
-      message: settingsConfigured
+      id: "django-cors-headers-installed-app",
+      label: "corsheaders app configured",
+      status: appConfigured ? "pass" : dependencyInstalled ? "warning" : "skipped",
+      message: appConfigured
         ? undefined
         : settingsPath
           ? `${settingsPath} does not include ${settingsApp}.`
           : "Django settings.py was not found.",
-      remediation: settingsConfigured
+      remediation: appConfigured
         ? undefined
-        : "Run avis add django-rest-framework to configure INSTALLED_APPS."
+        : "Run avis add django-cors-headers to configure INSTALLED_APPS."
+    },
+    {
+      id: "django-cors-headers-middleware",
+      label: "CORS middleware configured",
+      status: middlewareConfigured ? "pass" : dependencyInstalled ? "warning" : "skipped",
+      message: middlewareConfigured
+        ? undefined
+        : settingsPath
+          ? `${settingsPath} does not include ${middlewareName}.`
+          : "Django settings.py was not found.",
+      remediation: middlewareConfigured
+        ? undefined
+        : "Run avis add django-cors-headers to configure MIDDLEWARE."
     }
   ] as const;
   const hasWarning = checks.some((check) => check.status === "warning");
 
   return {
-    integrationId: "django-rest-framework",
+    integrationId,
     health: dependencyInstalled ? (hasWarning ? "partial" : "healthy") : "not-installed",
     checks: [...checks],
     diagnostics: []
