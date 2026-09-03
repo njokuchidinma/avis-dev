@@ -11,6 +11,7 @@ import { laravelPestIntegration } from "./laravel-pest.js";
 import { laravelSanctumIntegration } from "./laravel-sanctum.js";
 import { lucideReactIntegration } from "./lucide-react.js";
 import { nextAuthIntegration } from "./next-auth.js";
+import { officialCapabilityIntegrations } from "./official-capability-integrations.js";
 import type { ProjectContext } from "../types/project-context.js";
 import { ecosystems } from "../types/ids.js";
 import { reactHookFormIntegration } from "./react-hook-form.js";
@@ -79,6 +80,7 @@ export const builtInCapabilities: Capability[] = [
     aliases: ["authentication", "api-auth", "access-control"],
     defaultIntegrations: {
       [ecosystems.node]: "next-auth",
+      [ecosystems.python]: "django-simple-jwt",
       [ecosystems.php]: "laravel-sanctum"
     }
   },
@@ -109,7 +111,11 @@ export const builtInCapabilities: Capability[] = [
     id: "api-documentation",
     name: "API Documentation",
     description: "OpenAPI, schema, and API reference tooling.",
-    aliases: ["openapi", "swagger"]
+    aliases: ["openapi", "swagger"],
+    defaultIntegrations: {
+      [ecosystems.node]: "swagger-ui-express",
+      [ecosystems.python]: "drf-spectacular"
+    }
   },
   {
     id: "routing",
@@ -128,12 +134,22 @@ export const builtInCapabilities: Capability[] = [
   {
     id: "database",
     name: "Database",
-    description: "Database clients and persistence setup."
+    description: "Database clients and persistence setup.",
+    defaultIntegrations: {
+      [ecosystems.node]: "node-postgres",
+      [ecosystems.python]: "psycopg",
+      [ecosystems.rust]: "rust-sqlx",
+      [ecosystems.go]: "go-pgx"
+    }
   },
   {
     id: "orm",
     name: "ORM",
-    description: "Object-relational mapping and query builders."
+    description: "Object-relational mapping and query builders.",
+    defaultIntegrations: {
+      [ecosystems.python]: "sqlalchemy",
+      [ecosystems.go]: "gorm"
+    }
   },
   {
     id: "migrations",
@@ -143,13 +159,24 @@ export const builtInCapabilities: Capability[] = [
   {
     id: "caching",
     name: "Caching",
-    description: "Application cache clients and cache configuration."
+    description: "Application cache clients and cache configuration.",
+    defaultIntegrations: {
+      [ecosystems.node]: "redis-node",
+      [ecosystems.python]: "django-redis",
+      [ecosystems.php]: "predis",
+      [ecosystems.go]: "go-redis"
+    }
   },
   {
     id: "background-jobs",
     name: "Background Jobs",
     description: "Asynchronous work processing.",
-    aliases: ["jobs", "workers"]
+    aliases: ["jobs", "workers"],
+    defaultIntegrations: {
+      [ecosystems.node]: "bullmq",
+      [ecosystems.python]: "celery",
+      [ecosystems.php]: "laravel-horizon"
+    }
   },
   {
     id: "queues",
@@ -169,12 +196,25 @@ export const builtInCapabilities: Capability[] = [
   {
     id: "monitoring",
     name: "Monitoring",
-    description: "Runtime health, metrics, and error monitoring."
+    description: "Runtime health, metrics, and error monitoring.",
+    defaultIntegrations: {
+      [ecosystems.node]: "sentry-nextjs",
+      [ecosystems.python]: "sentry-python",
+      [ecosystems.php]: "sentry-laravel",
+      [ecosystems.dart]: "sentry-flutter",
+      [ecosystems.rust]: "sentry-rust",
+      [ecosystems.go]: "sentry-go"
+    }
   },
   {
     id: "storage",
     name: "Storage",
-    description: "Object, file, and media storage integrations."
+    description: "Object, file, and media storage integrations.",
+    defaultIntegrations: {
+      [ecosystems.node]: "aws-sdk-s3",
+      [ecosystems.python]: "django-storages",
+      [ecosystems.php]: "flysystem-s3"
+    }
   },
   {
     id: "local-storage",
@@ -192,7 +232,11 @@ export const builtInCapabilities: Capability[] = [
   {
     id: "email",
     name: "Email",
-    description: "Transactional email delivery."
+    description: "Transactional email delivery.",
+    defaultIntegrations: {
+      [ecosystems.node]: "resend-node",
+      [ecosystems.python]: "django-anymail"
+    }
   },
   {
     id: "payments",
@@ -220,7 +264,11 @@ export const builtInCapabilities: Capability[] = [
     name: "Configuration",
     description: "Application settings and environment configuration.",
     defaultIntegrations: {
-      [ecosystems.python]: "fastapi-pydantic-settings"
+      [ecosystems.node]: "dotenv",
+      [ecosystems.python]: "fastapi-pydantic-settings",
+      [ecosystems.php]: "phpdotenv",
+      [ecosystems.rust]: "rust-config",
+      [ecosystems.go]: "viper"
     }
   },
   {
@@ -228,6 +276,7 @@ export const builtInCapabilities: Capability[] = [
     name: "Security",
     description: "Security hardening and guardrail tooling.",
     defaultIntegrations: {
+      [ecosystems.node]: "helmet",
       [ecosystems.python]: "django-cors-headers"
     }
   },
@@ -236,6 +285,8 @@ export const builtInCapabilities: Capability[] = [
     name: "Testing",
     description: "Project-native test framework setup and starter tests.",
     defaultIntegrations: {
+      [ecosystems.node]: "vitest",
+      [ecosystems.python]: "pytest-django",
       [ecosystems.php]: "laravel-pest"
     }
   },
@@ -287,7 +338,8 @@ export const builtInIntegrations: AvisIntegration[] = [
   fastapiPydanticSettingsIntegration,
   expoSecureStoreIntegration,
   axumTowerHttpIntegration,
-  ginValidatorIntegration
+  ginValidatorIntegration,
+  ...officialCapabilityIntegrations
 ];
 
 export function findIntegrationById(id: string): AvisIntegration | undefined {

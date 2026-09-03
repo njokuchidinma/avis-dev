@@ -14,6 +14,7 @@ export * from "./laravel-pest.js";
 export * from "./laravel-sanctum.js";
 export * from "./lucide-react.js";
 export * from "./next-auth.js";
+export * from "./official-capability-integrations.js";
 export * from "./react-icons.js";
 export * from "./react-hook-form.js";
 export * from "./react-router-dom.js";

@@ -1,4 +1,5 @@
 import type { ChangePlan } from "../planning/change-plan.js";
+import type { DependencyType } from "../planning/operations.js";
 import { createPackageManagerAdapter } from "../package-managers/factory.js";
 import type { PackageManagerAdapter } from "../package-managers/types.js";
 import type { ProjectContext } from "../types/project-context.js";
@@ -16,6 +17,7 @@ export interface DependencyOnlyIntegrationOptions {
   planTitle: string;
   dependencyOperationId: string;
   dependencyDescription: string;
+  dependencyType?: DependencyType;
   compatibilityDescription: string;
 }
 
@@ -55,7 +57,7 @@ export function createDependencyOnlyIntegration(
                 id: options.dependencyOperationId,
                 type: "dependency.add",
                 description: options.dependencyDescription,
-                dependencyType: "runtime",
+                dependencyType: options.dependencyType ?? "runtime",
                 packageManager: packageManagerId,
                 packages: missingPackageNames.map((name) => ({ name }))
               }
