@@ -127,6 +127,7 @@ async function createPublishableIntegration(
         version: "0.1.0",
         status: "experimental",
         trust: "local",
+        setupMaturity: "install",
         supports: {
           ecosystems: ["node"],
           frameworks: ["nextjs"],

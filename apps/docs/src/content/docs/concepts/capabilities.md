@@ -39,4 +39,9 @@ If exactly one compatible integration exists for the detected project and capabi
 avis add lucide-react
 ```
 
+Recommendation order is framework-specific first, then project-type-specific,
+then ecosystem-specific. Avis can also mark a capability as native to a
+framework, such as FastAPI's built-in OpenAPI documentation, instead of
+pretending there is a package to install.
+
 Generated capability and integration metadata is available in [Generated Registry](/generated/registry/).

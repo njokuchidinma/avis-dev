@@ -116,6 +116,7 @@ async function createProjectWithLocalIntegration(
       version: "0.1.0",
       status: "experimental",
       trust: "official",
+      setupMaturity: "install",
       supports: {
         ecosystems: [ecosystems.node],
         frameworks: [frameworks.nextjs],

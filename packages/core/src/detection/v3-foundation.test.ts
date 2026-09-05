@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 import { ecosystemAdapters } from "../ecosystems/catalog.js";
 import {
   findFrameworkDefinition,
+  frameworkDefinitions,
   getFrameworkSupportTier,
   getRelevantCapabilitiesForContext
 } from "../frameworks/catalog.js";
@@ -17,7 +18,7 @@ import {
 } from "../types/ids.js";
 import { createProjectContext } from "./context.js";
 import { detectGoProject } from "./go.js";
-import { detectNodeProject } from "./node.js";
+import { detectableNodeFrameworkIds, detectNodeProject } from "./node.js";
 import { detectProject } from "./project.js";
 import { detectRustProject } from "./rust.js";
 
@@ -147,6 +148,13 @@ require github.com/gin-gonic/gin v1.11.0
     expect(getFrameworkSupportTier(frameworks.gin)).toBe("tier-2");
     expect(findFrameworkDefinition(frameworks.flutter)?.defaultProjectType).toBe(
       projectTypes.mobile
+    );
+    expect(findFrameworkDefinition(frameworks.fastify)?.defaultProjectType).toBe(
+      projectTypes.backend
+    );
+    expect(detectableNodeFrameworkIds).toContain(frameworks.fastify);
+    expect(frameworkDefinitions.map((definition) => definition.id)).toEqual(
+      expect.arrayContaining([...detectableNodeFrameworkIds])
     );
     expect(getRelevantCapabilitiesForContext(context)).toContain("api");
     expect(getRelevantCapabilitiesForContext(context)).toContain("auth");

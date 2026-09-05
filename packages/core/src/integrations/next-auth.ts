@@ -20,6 +20,7 @@ export const nextAuthIntegration: AvisIntegration = {
     version: "1.0.0",
     status: "experimental",
     trust: "official",
+    setupMaturity: "configure",
     supports: {
       ecosystems: [ecosystems.node],
       frameworks: [frameworks.nextjs],
@@ -58,6 +59,7 @@ export const nextAuthIntegration: AvisIntegration = {
     );
     const authPath = await getAuthConfigPath(context);
     const routePath = await getAuthRoutePath(context);
+    const authRouteImportPath = createRelativeModuleSpecifier(routePath, authPath);
     const authConfigExists = await pathExists(path.join(context.targetRoot, authPath));
     const routeExists = await pathExists(path.join(context.targetRoot, routePath));
     const envExampleHasSecret = await envFileIncludesVariable(
@@ -104,7 +106,7 @@ export const nextAuthIntegration: AvisIntegration = {
                 type: "file.create" as const,
                 description: "Create the Next.js Auth.js route handler.",
                 path: routePath,
-                contents: createAuthRouteContents(),
+                contents: createAuthRouteContents(authRouteImportPath),
                 overwrite: "never" as const
               }
             ]),
@@ -257,11 +259,20 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
 `;
 }
 
-function createAuthRouteContents(): string {
-  return `import { handlers } from "../../../../auth";
+function createAuthRouteContents(authRouteImportPath: string): string {
+  return `import { handlers } from "${authRouteImportPath}";
 
 export const { GET, POST } = handlers;
 `;
+}
+
+function createRelativeModuleSpecifier(fromFilePath: string, toFilePath: string): string {
+  const fromDirectory = path.posix.dirname(fromFilePath);
+  const parsedTarget = path.posix.parse(toFilePath);
+  const targetWithoutExtension = path.posix.join(parsedTarget.dir, parsedTarget.name);
+  const relativePath = path.posix.relative(fromDirectory, targetWithoutExtension);
+
+  return relativePath.startsWith(".") ? relativePath : `./${relativePath}`;
 }
 
 async function envFileIncludesVariable(

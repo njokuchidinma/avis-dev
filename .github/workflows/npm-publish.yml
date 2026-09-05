@@ -1,0 +1,93 @@
+name: Publish npm package
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  publish:
+    name: Publish avis-dev
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.24.0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Validate release version
+        id: package
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+
+          package_version="$(node -e "const fs = require('node:fs'); process.stdout.write(JSON.parse(fs.readFileSync('package.json', 'utf8')).version)")"
+          expected_tag="v${package_version}"
+
+          if [ "${RELEASE_TAG}" != "${expected_tag}" ]; then
+            echo "Release tag ${RELEASE_TAG} does not match package version ${package_version}. Expected ${expected_tag}."
+            exit 1
+          fi
+
+          case "${package_version}" in
+            *-alpha.*)
+              publish_tag="alpha"
+              ;;
+            *-*)
+              echo "Unsupported prerelease version: ${package_version}. Use an alpha version or add an explicit release policy."
+              exit 1
+              ;;
+            *)
+              publish_tag="latest"
+              ;;
+          esac
+
+          echo "version=${package_version}" >> "${GITHUB_OUTPUT}"
+          echo "publish_tag=${publish_tag}" >> "${GITHUB_OUTPUT}"
+
+      - name: Run release checks
+        run: pnpm release:check
+
+      - name: Publish package
+        run: npm publish --tag "${PUBLISH_TAG}" --access public
+        env:
+          PUBLISH_TAG: ${{ steps.package.outputs.publish_tag }}
+
+      - name: Point latest to the published version
+        run: npm dist-tag add "avis-dev@${PACKAGE_VERSION}" latest
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          PACKAGE_VERSION: ${{ steps.package.outputs.version }}
+
+      - name: Verify npm tags
+        run: |
+          set -euo pipefail
+
+          published_version="$(npm view avis-dev@"${PACKAGE_VERSION}" version)"
+          latest_version="$(npm view avis-dev dist-tags.latest)"
+          channel_version="$(npm view avis-dev dist-tags."${PUBLISH_TAG}")"
+
+          test "${published_version}" = "${PACKAGE_VERSION}"
+          test "${latest_version}" = "${PACKAGE_VERSION}"
+          test "${channel_version}" = "${PACKAGE_VERSION}"
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          PACKAGE_VERSION: ${{ steps.package.outputs.version }}
+          PUBLISH_TAG: ${{ steps.package.outputs.publish_tag }}

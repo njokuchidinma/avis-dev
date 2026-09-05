@@ -23,6 +23,7 @@ export const djangoCorsHeadersIntegration: AvisIntegration = {
     version: "1.0.0",
     status: "stable",
     trust: "official",
+    setupMaturity: "configure",
     supports: {
       ecosystems: [ecosystems.python],
       frameworks: [frameworks.django],

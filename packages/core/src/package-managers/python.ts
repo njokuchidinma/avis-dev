@@ -7,6 +7,7 @@ import type { PackageManagerId } from "../types/ids.js";
 import type { ProjectContext } from "../types/project-context.js";
 import type {
   DependencyInstallRequest,
+  DependencyRemoveRequest,
   PackageManagerAdapter,
   PackageManagerCommand
 } from "./types.js";
@@ -33,7 +34,11 @@ export function createPythonPackageManagerAdapter(
     buildAddCommand: (
       context: ProjectContext,
       request: DependencyInstallRequest
-    ): PackageManagerCommand => buildPythonAddCommand(id, context, request)
+    ): PackageManagerCommand => buildPythonAddCommand(id, context, request),
+    buildRemoveCommand: (
+      context: ProjectContext,
+      request: DependencyRemoveRequest
+    ): PackageManagerCommand => buildPythonRemoveCommand(id, context, request)
   };
 }
 
@@ -85,6 +90,38 @@ function buildPythonAddCommand(
       return {
         command: "python",
         args: ["-m", "pip", "install", ...packageSpecs],
+        cwd: context.targetRoot
+      };
+
+    default:
+      throw new Error(`Unsupported Python package manager: ${id}`);
+  }
+}
+
+function buildPythonRemoveCommand(
+  id: PackageManagerId,
+  context: ProjectContext,
+  request: DependencyRemoveRequest
+): PackageManagerCommand {
+  switch (id) {
+    case packageManagers.uv:
+      return {
+        command: "uv",
+        args: ["remove", ...request.packages],
+        cwd: context.targetRoot
+      };
+
+    case packageManagers.poetry:
+      return {
+        command: "poetry",
+        args: ["remove", ...request.packages],
+        cwd: context.targetRoot
+      };
+
+    case packageManagers.pip:
+      return {
+        command: "python",
+        args: ["-m", "pip", "uninstall", "--yes", ...request.packages],
         cwd: context.targetRoot
       };
 

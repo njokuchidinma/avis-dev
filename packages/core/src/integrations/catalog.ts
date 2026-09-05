@@ -52,6 +52,10 @@ export const builtInCapabilities: Capability[] = [
     defaultIntegrations: {
       [ecosystems.python]: "django-rest-framework",
       [ecosystems.rust]: "axum-tower-http"
+    },
+    defaultFrameworkIntegrations: {
+      django: "django-rest-framework",
+      axum: "axum-tower-http"
     }
   },
   {
@@ -82,6 +86,11 @@ export const builtInCapabilities: Capability[] = [
       [ecosystems.node]: "next-auth",
       [ecosystems.python]: "django-simple-jwt",
       [ecosystems.php]: "laravel-sanctum"
+    },
+    defaultFrameworkIntegrations: {
+      nextjs: "next-auth",
+      django: "django-simple-jwt",
+      laravel: "laravel-sanctum"
     }
   },
   {
@@ -115,6 +124,12 @@ export const builtInCapabilities: Capability[] = [
     defaultIntegrations: {
       [ecosystems.node]: "swagger-ui-express",
       [ecosystems.python]: "drf-spectacular"
+    },
+    defaultFrameworkIntegrations: {
+      django: "drf-spectacular"
+    },
+    nativeFrameworkSupport: {
+      fastapi: "FastAPI exposes OpenAPI and Swagger UI natively."
     }
   },
   {
@@ -124,6 +139,9 @@ export const builtInCapabilities: Capability[] = [
     defaultIntegrations: {
       [ecosystems.node]: "react-router-dom",
       [ecosystems.dart]: "flutter-go-router"
+    },
+    defaultFrameworkIntegrations: {
+      flutter: "flutter-go-router"
     }
   },
   {
@@ -227,6 +245,9 @@ export const builtInCapabilities: Capability[] = [
     description: "Encrypted or platform-secure local persistence.",
     defaultIntegrations: {
       [ecosystems.node]: "expo-secure-store"
+    },
+    defaultFrameworkIntegrations: {
+      expo: "expo-secure-store"
     }
   },
   {
@@ -288,6 +309,10 @@ export const builtInCapabilities: Capability[] = [
       [ecosystems.node]: "vitest",
       [ecosystems.python]: "pytest-django",
       [ecosystems.php]: "laravel-pest"
+    },
+    defaultFrameworkIntegrations: {
+      django: "pytest-django",
+      laravel: "laravel-pest"
     }
   },
   {

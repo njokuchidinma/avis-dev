@@ -3,6 +3,7 @@ import type { AvisIntegration, ProjectContext } from "@avis/core";
 import {
   IntegrationRegistry,
   validateIntegrationManifest,
+  validateRegistryCatalog,
   validateStackManifest
 } from "./index.js";
 
@@ -100,6 +101,78 @@ describe("IntegrationRegistry", () => {
     expect(recommendations[0]?.reasons).toContain(
       "default recommendation for this ecosystem"
     );
+    expect(recommendations[0]?.reasons).toContain("configure setup maturity");
+  });
+
+  it("prefers framework defaults over ecosystem defaults", () => {
+    const registry = new IntegrationRegistry({
+      capabilities: [
+        {
+          id: "auth",
+          name: "Authentication",
+          defaultIntegrations: {
+            node: "ecosystem-auth"
+          },
+          defaultFrameworkIntegrations: {
+            nextjs: "next-auth"
+          }
+        }
+      ],
+      integrations: [ecosystemAuthIntegration, nextAuthRegistryIntegration]
+    });
+
+    const recommendations = registry.recommendIntegrationsForCapability(
+      "auth",
+      nextContext
+    );
+
+    expect(recommendations.map((entry) => entry.integration.manifest.id)).toEqual([
+      "next-auth",
+      "ecosystem-auth"
+    ]);
+    expect(recommendations[0]?.reasons).toContain(
+      "default recommendation for this framework"
+    );
+  });
+
+  it("reports native framework capability support separately from integrations", () => {
+    const registry = new IntegrationRegistry({
+      capabilities: [
+        {
+          id: "api-documentation",
+          name: "API Documentation",
+          nativeFrameworkSupport: {
+            fastapi: "FastAPI exposes OpenAPI natively."
+          }
+        }
+      ],
+      integrations: []
+    });
+
+    expect(
+      registry.findNativeCapabilitySupport("api-documentation", {
+        ...nextContext,
+        ecosystem: "python",
+        framework: {
+          id: "fastapi"
+        },
+        frameworks: [
+          {
+            id: "fastapi"
+          }
+        ]
+      })
+    ).toEqual({
+      capability: {
+        id: "api-documentation",
+        name: "API Documentation",
+        nativeFrameworkSupport: {
+          fastapi: "FastAPI exposes OpenAPI natively."
+        }
+      },
+      framework: "fastapi",
+      description: "FastAPI exposes OpenAPI natively."
+    });
   });
 
   it("resolves stacks through capability recommendations", () => {
@@ -211,6 +284,7 @@ describe("manifest validation", () => {
         version: "",
         status: "stable",
         trust: "official",
+        setupMaturity: undefined as never,
         supports: {
           ecosystems: []
         }
@@ -222,6 +296,7 @@ describe("manifest validation", () => {
         "Integration capability is required.",
         "Integration description is required.",
         "Integration version is required.",
+        "Integration setup maturity is invalid.",
         "Integration must support at least one ecosystem."
       ]
     });
@@ -237,6 +312,7 @@ describe("manifest validation", () => {
         version: "0.1.0",
         status: "experimental",
         trust: "local",
+        setupMaturity: "install",
         supports: {
           ecosystems: ["node"]
         },
@@ -249,6 +325,115 @@ describe("manifest validation", () => {
       valid: true,
       errors: []
     });
+  });
+
+  it("rejects invalid setup maturity metadata", () => {
+    expect(
+      validateIntegrationManifest({
+        id: "company-auth",
+        name: "Company Auth",
+        description: "Internal auth package.",
+        capability: "auth",
+        version: "0.1.0",
+        status: "experimental",
+        trust: "local",
+        setupMaturity: "deep" as never,
+        supports: {
+          ecosystems: ["node"]
+        }
+      })
+    ).toEqual({
+      valid: false,
+      errors: ["Integration setup maturity is invalid."]
+    });
+  });
+
+  it("validates catalog references and detectable framework coverage", () => {
+    expect(
+      validateRegistryCatalog({
+        capabilities: [
+          {
+            id: "icons",
+            name: "Icons",
+            defaultIntegrations: {
+              node: "lucide-react"
+            }
+          }
+        ],
+        integrations: [lucideReactIntegration],
+        knownEcosystemIds: ["node"],
+        knownFrameworkIds: ["nextjs"],
+        knownPackageManagerIds: ["pnpm"],
+        detectableFrameworkIds: ["nextjs"]
+      })
+    ).toEqual({
+      valid: true,
+      errors: []
+    });
+
+    expect(
+      validateRegistryCatalog({
+        capabilities: [
+          {
+            id: "icons",
+            name: "Icons",
+            defaultIntegrations: {
+              node: "missing-icons"
+            }
+          }
+        ],
+        integrations: [
+          {
+            ...lucideReactIntegration,
+            manifest: {
+              ...lucideReactIntegration.manifest,
+              capability: "missing-capability",
+              supports: {
+                ecosystems: ["node"],
+                frameworks: ["missing-framework"],
+                packageManagers: ["missing-pm"]
+              }
+            }
+          }
+        ],
+        knownEcosystemIds: ["node"],
+        knownFrameworkIds: ["nextjs"],
+        knownPackageManagerIds: ["pnpm"],
+        detectableFrameworkIds: ["nextjs", "fastify"]
+      }).errors
+    ).toEqual([
+      "Capability icons defaults to unknown integration missing-icons.",
+      "Integration lucide-react references unknown capability missing-capability.",
+      "Integration lucide-react supports unknown framework missing-framework.",
+      "Integration lucide-react supports unknown package manager missing-pm.",
+      "Detectable framework fastify is missing from the framework catalog."
+    ]);
+  });
+
+  it("rejects managed integrations without verifier and repair support", () => {
+    expect(
+      validateRegistryCatalog({
+        capabilities: [
+          {
+            id: "auth",
+            name: "Authentication"
+          }
+        ],
+        integrations: [
+          {
+            ...nextAuthRegistryIntegration,
+            manifest: {
+              ...nextAuthRegistryIntegration.manifest,
+              setupMaturity: "managed",
+              repair: "unsupported"
+            }
+          }
+        ]
+      }).errors
+    ).toEqual([
+      "Integration next-auth is managed but does not expose a verifier.",
+      "Integration next-auth is managed but does not declare repair plan support."
+    ]);
   });
 
   it("validates stack manifests", () => {
@@ -297,6 +482,7 @@ const alternateStateIntegration: AvisIntegration = {
     version: "1.0.0",
     status: "stable",
     trust: "official",
+    setupMaturity: "configure",
     supports: {
       ecosystems: ["node"],
       frameworks: ["nextjs"]
@@ -330,6 +516,7 @@ const nextIntegration: AvisIntegration = {
     version: "1.0.0",
     status: "stable",
     trust: "official",
+    setupMaturity: "configure",
     supports: {
       ecosystems: ["node"],
       frameworks: ["nextjs"]
@@ -348,6 +535,7 @@ const lucideReactIntegration: AvisIntegration = {
     version: "1.0.0",
     status: "stable",
     trust: "official",
+    setupMaturity: "configure",
     supports: {
       ecosystems: ["node"],
       frameworks: ["nextjs"]
@@ -368,6 +556,7 @@ const reactIconsIntegration: AvisIntegration = {
     version: "1.0.0",
     status: "stable",
     trust: "official",
+    setupMaturity: "configure",
     supports: {
       ecosystems: ["node"],
       frameworks: ["nextjs"]
@@ -377,4 +566,41 @@ const reactIconsIntegration: AvisIntegration = {
   },
   isCompatible: nextIntegration.isCompatible,
   plan: nextIntegration.plan
+};
+
+const ecosystemAuthIntegration: AvisIntegration = {
+  manifest: {
+    id: "ecosystem-auth",
+    name: "Ecosystem Auth",
+    description: "Generic Node auth.",
+    capability: "auth",
+    version: "1.0.0",
+    status: "stable",
+    trust: "official",
+    setupMaturity: "install",
+    supports: {
+      ecosystems: ["node"]
+    }
+  },
+  isCompatible: () => ({ supported: true }),
+  plan: unusedPlan
+};
+
+const nextAuthRegistryIntegration: AvisIntegration = {
+  manifest: {
+    id: "next-auth",
+    name: "Auth.js",
+    description: "Next.js auth.",
+    capability: "auth",
+    version: "1.0.0",
+    status: "stable",
+    trust: "official",
+    setupMaturity: "configure",
+    supports: {
+      ecosystems: ["node"],
+      frameworks: ["nextjs"]
+    }
+  },
+  isCompatible: nextCompatibleIntegration,
+  plan: unusedPlan
 };

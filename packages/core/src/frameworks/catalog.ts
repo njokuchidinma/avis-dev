@@ -138,6 +138,14 @@ export const frameworkDefinitions: FrameworkDefinition[] = [
     relevantCapabilities: backendCapabilities
   },
   {
+    id: frameworks.fastify,
+    name: "Fastify",
+    ecosystem: ecosystems.node,
+    supportTier: "tier-3",
+    defaultProjectType: projectTypes.backend,
+    relevantCapabilities: backendCapabilities
+  },
+  {
     id: frameworks.vue,
     name: "Vue",
     ecosystem: ecosystems.node,

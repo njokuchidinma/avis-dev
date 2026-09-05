@@ -4,7 +4,8 @@ import type {
   EcosystemId,
   FrameworkId,
   IntegrationId,
-  PackageManagerId
+  PackageManagerId,
+  ProjectTypeId
 } from "../types/ids.js";
 import type { ProjectContext } from "../types/project-context.js";
 import type { VerificationResult } from "../verification/types.js";
@@ -15,6 +16,9 @@ export interface Capability {
   description?: string;
   aliases?: string[];
   defaultIntegrations?: Partial<Record<EcosystemId, IntegrationId>>;
+  defaultFrameworkIntegrations?: Partial<Record<FrameworkId, IntegrationId>>;
+  defaultProjectTypeIntegrations?: Partial<Record<ProjectTypeId, IntegrationId>>;
+  nativeFrameworkSupport?: Partial<Record<FrameworkId, string>>;
   exclusive?: boolean;
 }
 
@@ -32,6 +36,7 @@ export type IntegrationTrustLevel =
   | "community"
   | "local"
   | "experimental";
+export type IntegrationSetupMaturity = "install" | "configure" | "managed";
 
 export interface IntegrationDependencyRequirement {
   name: string;
@@ -66,6 +71,7 @@ export interface AvisIntegrationManifest {
   version: string;
   status: IntegrationStatus;
   trust: IntegrationTrustLevel;
+  setupMaturity: IntegrationSetupMaturity;
   supports: IntegrationSupport;
   dependencies?: IntegrationDependencyRequirement[];
   configurationOptions?: IntegrationConfigurationOption[];

@@ -351,10 +351,15 @@ function parseManifest(contents: string): AvisIntegrationManifest {
     !isNonEmptyString(parsed.version) ||
     !isIntegrationStatus(parsed.status) ||
     !isIntegrationTrust(parsed.trust) ||
+    !isIntegrationSetupMaturity(parsed.setupMaturity) ||
     !isRecord(parsed.supports) ||
     !isStringArray(parsed.supports.ecosystems)
   ) {
     throw new Error("avis.integration.json is not publishable.");
+  }
+
+  if (parsed.setupMaturity === "managed" && parsed.repair !== "plan") {
+    throw new Error("avis.integration.json declares managed setup without repair plan support.");
   }
 
   return parsed as unknown as AvisIntegrationManifest;
@@ -510,6 +515,12 @@ function isIntegrationTrust(value: unknown): value is AvisIntegrationManifest["t
     value === "local" ||
     value === "experimental"
   );
+}
+
+function isIntegrationSetupMaturity(
+  value: unknown
+): value is AvisIntegrationManifest["setupMaturity"] {
+  return value === "install" || value === "configure" || value === "managed";
 }
 
 function isStringArray(value: unknown): value is string[] {

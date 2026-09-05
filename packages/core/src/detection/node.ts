@@ -110,6 +110,9 @@ const nodeFrameworkDefinitions: NodeFrameworkDefinition[] = [
   }
 ];
 
+export const detectableNodeFrameworkIds: readonly FrameworkId[] =
+  nodeFrameworkDefinitions.map((definition) => definition.id);
+
 export async function detectNodeProject(root: string): Promise<DetectionResult> {
   const packageJsonPath = path.join(root, "package.json");
   const packageJsonExists = await pathExists(packageJsonPath);

@@ -22,6 +22,7 @@ export const laravelPestIntegration: AvisIntegration = {
     version: "1.0.0",
     status: "stable",
     trust: "community",
+    setupMaturity: "configure",
     supports: {
       ecosystems: [ecosystems.php],
       frameworks: [frameworks.laravel],

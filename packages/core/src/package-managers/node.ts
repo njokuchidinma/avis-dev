@@ -7,6 +7,7 @@ import type { PackageManagerId } from "../types/ids.js";
 import type { DependencySpec } from "../planning/operations.js";
 import type {
   DependencyInstallRequest,
+  DependencyRemoveRequest,
   PackageManagerAdapter,
   PackageManagerCommand
 } from "./types.js";
@@ -50,7 +51,11 @@ export function createNodePackageManagerAdapter(
     buildAddCommand: (
       context: ProjectContext,
       request: DependencyInstallRequest
-    ): PackageManagerCommand => buildNodeAddCommand(id, context, request)
+    ): PackageManagerCommand => buildNodeAddCommand(id, context, request),
+    buildRemoveCommand: (
+      context: ProjectContext,
+      request: DependencyRemoveRequest
+    ): PackageManagerCommand => buildNodeRemoveCommand(id, context, request)
   };
 }
 
@@ -139,6 +144,45 @@ function buildNodeAddCommand(
           ...(request.dependencyType === "optional" ? ["--optional"] : []),
           ...packageSpecs
         ],
+        cwd: context.targetRoot
+      };
+
+    default:
+      throw new Error(`Unsupported Node package manager: ${id}`);
+  }
+}
+
+function buildNodeRemoveCommand(
+  id: PackageManagerId,
+  context: ProjectContext,
+  request: DependencyRemoveRequest
+): PackageManagerCommand {
+  switch (id) {
+    case packageManagers.pnpm:
+      return {
+        command: "pnpm",
+        args: ["remove", ...request.packages],
+        cwd: context.targetRoot
+      };
+
+    case packageManagers.npm:
+      return {
+        command: "npm",
+        args: ["uninstall", ...request.packages],
+        cwd: context.targetRoot
+      };
+
+    case packageManagers.yarn:
+      return {
+        command: "yarn",
+        args: ["remove", ...request.packages],
+        cwd: context.targetRoot
+      };
+
+    case packageManagers.bun:
+      return {
+        command: "bun",
+        args: ["remove", ...request.packages],
         cwd: context.targetRoot
       };
 

@@ -10,6 +10,7 @@ export const ginValidatorIntegration = createDependencyOnlyIntegration({
     version: "1.0.0",
     status: "stable",
     trust: "official",
+    setupMaturity: "install",
     supports: {
       ecosystems: [ecosystems.go],
       frameworks: [frameworks.gin],

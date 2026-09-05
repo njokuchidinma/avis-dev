@@ -7,11 +7,13 @@ import type { VerificationResult } from "../verification/types.js";
 import type {
   AvisIntegration,
   AvisIntegrationManifest,
+  IntegrationSetupMaturity,
   CompatibilityResult
 } from "./types.js";
 
 export interface DependencyOnlyIntegrationOptions {
-  manifest: AvisIntegrationManifest;
+  manifest: Omit<AvisIntegrationManifest, "setupMaturity"> &
+    Partial<Pick<AvisIntegrationManifest, "setupMaturity">>;
   packageName?: string;
   packageNames?: string[];
   planTitle: string;
@@ -24,8 +26,13 @@ export interface DependencyOnlyIntegrationOptions {
 export function createDependencyOnlyIntegration(
   options: DependencyOnlyIntegrationOptions
 ): AvisIntegration {
+  const manifest: AvisIntegrationManifest = {
+    setupMaturity: "install" satisfies IntegrationSetupMaturity,
+    ...options.manifest
+  };
+
   return {
-    manifest: options.manifest,
+    manifest,
     isCompatible: (context) => isCompatible(context, options),
     plan: async ({ context }): Promise<ChangePlan> => {
       const compatibility = isCompatible(context, options);
@@ -46,9 +53,9 @@ export function createDependencyOnlyIntegration(
       );
 
       return {
-        id: options.manifest.id,
+        id: manifest.id,
         title: options.planTitle,
-        integrationId: options.manifest.id,
+        integrationId: manifest.id,
         target: context,
         operations: missingPackageNames.length === 0
           ? []

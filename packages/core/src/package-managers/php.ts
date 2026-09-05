@@ -7,6 +7,7 @@ import type { PackageManagerId } from "../types/ids.js";
 import type { ProjectContext } from "../types/project-context.js";
 import type {
   DependencyInstallRequest,
+  DependencyRemoveRequest,
   PackageManagerAdapter,
   PackageManagerCommand
 } from "./types.js";
@@ -46,6 +47,14 @@ export function createPhpPackageManagerAdapter(
         ...(request.dependencyType === "development" ? ["--dev"] : []),
         ...request.packages.map(formatDependencySpec)
       ],
+      cwd: context.targetRoot
+    }),
+    buildRemoveCommand: (
+      context: ProjectContext,
+      request: DependencyRemoveRequest
+    ): PackageManagerCommand => ({
+      command: "composer",
+      args: ["remove", ...request.packages],
       cwd: context.targetRoot
     })
   };

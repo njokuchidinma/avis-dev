@@ -10,6 +10,7 @@ export const fastapiPydanticSettingsIntegration = createDependencyOnlyIntegratio
     version: "1.0.0",
     status: "stable",
     trust: "official",
+    setupMaturity: "install",
     supports: {
       ecosystems: [ecosystems.python],
       frameworks: [frameworks.fastapi],

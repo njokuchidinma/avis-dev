@@ -7,6 +7,7 @@ import type { PackageManagerId } from "../types/ids.js";
 import type { ProjectContext } from "../types/project-context.js";
 import type {
   DependencyInstallRequest,
+  DependencyRemoveRequest,
   PackageManagerAdapter,
   PackageManagerCommand
 } from "./types.js";
@@ -41,6 +42,14 @@ export function createDartPackageManagerAdapter(
           formatDependencySpec(packageSpec, request.dependencyType)
         )
       ],
+      cwd: context.targetRoot
+    }),
+    buildRemoveCommand: (
+      context: ProjectContext,
+      request: DependencyRemoveRequest
+    ): PackageManagerCommand => ({
+      command: "dart",
+      args: ["pub", "remove", ...request.packages],
       cwd: context.targetRoot
     })
   };

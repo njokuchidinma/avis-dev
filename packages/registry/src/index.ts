@@ -20,6 +20,12 @@ export interface IntegrationRecommendation {
   reasons: string[];
 }
 
+export interface NativeCapabilitySupport {
+  capability: Capability;
+  framework: FrameworkId;
+  description: string;
+}
+
 export type RegistrySearchResultKind = "capability" | "integration" | "stack";
 
 export interface RegistrySearchResult {
@@ -41,6 +47,15 @@ export interface StackManifest {
 export interface ManifestValidationResult {
   valid: boolean;
   errors: string[];
+}
+
+export interface RegistryCatalogValidationOptions {
+  capabilities: Capability[];
+  integrations: AvisIntegration[];
+  knownEcosystemIds?: readonly string[];
+  knownFrameworkIds?: readonly string[];
+  knownPackageManagerIds?: readonly string[];
+  detectableFrameworkIds?: readonly string[];
 }
 
 export class IntegrationRegistry {
@@ -186,17 +201,41 @@ export class IntegrationRegistry {
       capability?.id ?? capabilityId,
       context
     );
-    const defaultIntegrationId = context.ecosystem
-      ? capability?.defaultIntegrations?.[context.ecosystem]
+    const defaultRecommendation = capability
+      ? resolveDefaultIntegrationId(capability, context)
       : undefined;
 
     return integrations
       .map((integration) => ({
         integration,
-        recommended: integration.manifest.id === defaultIntegrationId,
-        reasons: getRecommendationReasons(integration, context, defaultIntegrationId)
+        recommended: integration.manifest.id === defaultRecommendation?.integrationId,
+        reasons: getRecommendationReasons(integration, context, defaultRecommendation)
       }))
       .sort(compareRecommendations);
+  }
+
+  findNativeCapabilitySupport(
+    capabilityId: string,
+    context: ProjectContext
+  ): NativeCapabilitySupport | undefined {
+    const capability = this.findCapabilityByQuery(capabilityId);
+    if (!capability) {
+      return undefined;
+    }
+
+    const frameworks = context.frameworks ?? (context.framework ? [context.framework] : []);
+    for (const framework of frameworks) {
+      const description = capability.nativeFrameworkSupport?.[framework.id];
+      if (description) {
+        return {
+          capability,
+          framework: framework.id,
+          description
+        };
+      }
+    }
+
+    return undefined;
   }
 
   resolveStack(
@@ -343,16 +382,17 @@ export class IntegrationRegistry {
 function getRecommendationReasons(
   integration: AvisIntegration,
   context: ProjectContext,
-  defaultIntegrationId: string | undefined
+  defaultRecommendation: DefaultIntegrationResolution | undefined
 ): string[] {
   const reasons = [
     `compatible with ${context.framework?.id ?? context.ecosystem}`,
     `${formatStatusLabel(integration.manifest.status)} integration`,
-    `${formatTrustLabel(integration.manifest.trust)} trust`
+    `${formatTrustLabel(integration.manifest.trust)} trust`,
+    `${formatSetupMaturityLabel(integration.manifest.setupMaturity)} setup maturity`
   ];
 
-  if (integration.manifest.id === defaultIntegrationId) {
-    reasons.unshift("default recommendation for this ecosystem");
+  if (integration.manifest.id === defaultRecommendation?.integrationId) {
+    reasons.unshift(`default recommendation for this ${defaultRecommendation.scope}`);
   }
 
   if (integration.manifest.source?.owner === "avis") {
@@ -364,6 +404,46 @@ function getRecommendationReasons(
   }
 
   return reasons;
+}
+
+interface DefaultIntegrationResolution {
+  integrationId: string;
+  scope: "framework" | "project type" | "ecosystem";
+}
+
+function resolveDefaultIntegrationId(
+  capability: Capability,
+  context: ProjectContext
+): DefaultIntegrationResolution | undefined {
+  const frameworks = context.frameworks ?? (context.framework ? [context.framework] : []);
+  for (const framework of frameworks) {
+    const integrationId = capability.defaultFrameworkIntegrations?.[framework.id];
+    if (integrationId) {
+      return {
+        integrationId,
+        scope: "framework"
+      };
+    }
+  }
+
+  const projectTypes = context.projectTypes ?? (context.projectType ? [context.projectType] : []);
+  for (const projectType of projectTypes) {
+    const integrationId = capability.defaultProjectTypeIntegrations?.[projectType.id];
+    if (integrationId) {
+      return {
+        integrationId,
+        scope: "project type"
+      };
+    }
+  }
+
+  const integrationId = capability.defaultIntegrations?.[context.ecosystem];
+  return integrationId
+    ? {
+        integrationId,
+        scope: "ecosystem"
+      }
+    : undefined;
 }
 
 function compareRecommendations(
@@ -409,6 +489,19 @@ function formatTrustLabel(trust: AvisIntegrationManifest["trust"]): string {
       return "local";
     case "experimental":
       return "experimental";
+  }
+}
+
+function formatSetupMaturityLabel(
+  maturity: AvisIntegrationManifest["setupMaturity"]
+): string {
+  switch (maturity) {
+    case "install":
+      return "install";
+    case "configure":
+      return "configure";
+    case "managed":
+      return "managed";
   }
 }
 
@@ -503,6 +596,10 @@ export function validateIntegrationManifest(
     errors.push("Integration trust level is invalid.");
   }
 
+  if (!["install", "configure", "managed"].includes(manifest.setupMaturity)) {
+    errors.push("Integration setup maturity is invalid.");
+  }
+
   if (manifest.supports.ecosystems.length === 0) {
     errors.push("Integration must support at least one ecosystem.");
   }
@@ -512,6 +609,200 @@ export function validateIntegrationManifest(
     manifest.supports.packageManagers.length === 0
   ) {
     errors.push("Integration package manager support cannot be empty when provided.");
+  }
+
+  return {
+    valid: errors.length === 0,
+    errors
+  };
+}
+
+export function validateRegistryCatalog(
+  options: RegistryCatalogValidationOptions
+): ManifestValidationResult {
+  const errors: string[] = [];
+  const capabilityIds = new Set(options.capabilities.map((capability) => capability.id));
+  const integrationIds = new Set(
+    options.integrations.map((integration) => integration.manifest.id)
+  );
+  const knownEcosystemIds = options.knownEcosystemIds
+    ? new Set(options.knownEcosystemIds)
+    : undefined;
+  const knownFrameworkIds = options.knownFrameworkIds
+    ? new Set(options.knownFrameworkIds)
+    : undefined;
+  const knownPackageManagerIds = options.knownPackageManagerIds
+    ? new Set(options.knownPackageManagerIds)
+    : undefined;
+
+  for (const capability of options.capabilities) {
+    for (const [ecosystem, integrationId] of Object.entries(capability.defaultIntegrations ?? {})) {
+      if (knownEcosystemIds && !knownEcosystemIds.has(ecosystem)) {
+        errors.push(`Capability ${capability.id} has unknown default ecosystem ${ecosystem}.`);
+      }
+
+      if (!integrationId) {
+        continue;
+      }
+
+      if (!integrationIds.has(integrationId)) {
+        errors.push(
+          `Capability ${capability.id} defaults to unknown integration ${integrationId}.`
+        );
+        continue;
+      }
+
+      const integration = options.integrations.find(
+        (candidate) => candidate.manifest.id === integrationId
+      );
+      if (integration?.manifest.capability !== capability.id) {
+        errors.push(
+          `Capability ${capability.id} defaults to ${integrationId}, but that integration provides ${integration?.manifest.capability ?? "unknown"}.`
+        );
+      }
+
+      if (!integration?.manifest.supports.ecosystems.includes(ecosystem)) {
+        errors.push(
+          `Capability ${capability.id} defaults to ${integrationId}, but it does not support ${ecosystem}.`
+        );
+      }
+    }
+
+    for (const [framework, integrationId] of Object.entries(
+      capability.defaultFrameworkIntegrations ?? {}
+    )) {
+      if (knownFrameworkIds && !knownFrameworkIds.has(framework)) {
+        errors.push(`Capability ${capability.id} has unknown default framework ${framework}.`);
+      }
+
+      if (!integrationId) {
+        continue;
+      }
+
+      const integration = options.integrations.find(
+        (candidate) => candidate.manifest.id === integrationId
+      );
+      if (!integration) {
+        errors.push(
+          `Capability ${capability.id} defaults to unknown integration ${integrationId} for framework ${framework}.`
+        );
+        continue;
+      }
+
+      if (integration.manifest.capability !== capability.id) {
+        errors.push(
+          `Capability ${capability.id} defaults to ${integrationId} for framework ${framework}, but that integration provides ${integration.manifest.capability}.`
+        );
+      }
+
+      if (
+        integration.manifest.supports.frameworks &&
+        !integration.manifest.supports.frameworks.includes(framework)
+      ) {
+        errors.push(
+          `Capability ${capability.id} defaults to ${integrationId}, but it does not support framework ${framework}.`
+        );
+      }
+    }
+
+    for (const [projectType, integrationId] of Object.entries(
+      capability.defaultProjectTypeIntegrations ?? {}
+    )) {
+      if (!integrationId) {
+        continue;
+      }
+
+      const integration = options.integrations.find(
+        (candidate) => candidate.manifest.id === integrationId
+      );
+      if (!integration) {
+        errors.push(
+          `Capability ${capability.id} defaults to unknown integration ${integrationId} for project type ${projectType}.`
+        );
+        continue;
+      }
+
+      if (integration.manifest.capability !== capability.id) {
+        errors.push(
+          `Capability ${capability.id} defaults to ${integrationId} for project type ${projectType}, but that integration provides ${integration.manifest.capability}.`
+        );
+      }
+    }
+
+    if (knownFrameworkIds) {
+      for (const framework of Object.keys(capability.nativeFrameworkSupport ?? {})) {
+        if (!knownFrameworkIds.has(framework)) {
+          errors.push(`Capability ${capability.id} has unknown native framework ${framework}.`);
+        }
+      }
+    }
+  }
+
+  for (const integration of options.integrations) {
+    const manifestValidation = validateIntegrationManifest(integration.manifest);
+    errors.push(
+      ...manifestValidation.errors.map(
+        (error) => `${integration.manifest.id || "unknown integration"}: ${error}`
+      )
+    );
+
+    if (!capabilityIds.has(integration.manifest.capability)) {
+      errors.push(
+        `Integration ${integration.manifest.id} references unknown capability ${integration.manifest.capability}.`
+      );
+    }
+
+    if (integration.manifest.setupMaturity === "managed") {
+      if (!integration.verify) {
+        errors.push(
+          `Integration ${integration.manifest.id} is managed but does not expose a verifier.`
+        );
+      }
+
+      if (integration.manifest.repair !== "plan") {
+        errors.push(
+          `Integration ${integration.manifest.id} is managed but does not declare repair plan support.`
+        );
+      }
+    }
+
+    if (knownEcosystemIds) {
+      for (const ecosystem of integration.manifest.supports.ecosystems) {
+        if (!knownEcosystemIds.has(ecosystem)) {
+          errors.push(
+            `Integration ${integration.manifest.id} supports unknown ecosystem ${ecosystem}.`
+          );
+        }
+      }
+    }
+
+    if (knownFrameworkIds) {
+      for (const framework of integration.manifest.supports.frameworks ?? []) {
+        if (!knownFrameworkIds.has(framework)) {
+          errors.push(
+            `Integration ${integration.manifest.id} supports unknown framework ${framework}.`
+          );
+        }
+      }
+    }
+
+    if (knownPackageManagerIds) {
+      for (const packageManager of integration.manifest.supports.packageManagers ?? []) {
+        if (!knownPackageManagerIds.has(packageManager)) {
+          errors.push(
+            `Integration ${integration.manifest.id} supports unknown package manager ${packageManager}.`
+          );
+        }
+      }
+    }
+  }
+
+  if (options.detectableFrameworkIds && knownFrameworkIds) {
+    for (const framework of options.detectableFrameworkIds) {
+      if (!knownFrameworkIds.has(framework)) {
+        errors.push(`Detectable framework ${framework} is missing from the framework catalog.`);
+      }
+    }
   }
 
   return {

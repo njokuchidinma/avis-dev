@@ -1,10 +1,13 @@
 #!/usr/bin/env node
+import { readFileSync } from "node:fs";
 import { access, mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { createInterface } from "node:readline/promises";
 import { stdin as input, stdout as output } from "node:process";
+import { fileURLToPath } from "node:url";
 import {
   applyChangePlan,
+  ApplyChangePlanError,
   builtInCapabilities,
   builtInIntegrations,
   composeChangePlans,
@@ -57,6 +60,7 @@ const builtInStacks: StackManifest[] = [
   }
 ];
 
+const avisPackageName = "avis-dev";
 
 interface DoctorEntry {
   integration: AvisIntegration;
@@ -97,6 +101,10 @@ function printRuntimeDiagnostics(diagnostics: Diagnostic[]): void {
 
 export async function runCli(argv = process.argv.slice(2)): Promise<void> {
   const args = argv[0] === "--" ? argv.slice(1) : argv;
+  if (args.includes("--version") || args.includes("-v")) {
+    printVersion();
+    return;
+  }
 
   const { positionals, options } = parseArgs(args);
   const [command, subject] = positionals;
@@ -148,6 +156,15 @@ export async function runCli(argv = process.argv.slice(2)): Promise<void> {
     return;
   }
 
+  if (command === "version") {
+    printVersion();
+    return;
+  }
+
+  if (command === "upgrade" || command === "update") {
+    printUpgradeInstructions();
+    return;
+  }
 
   if (command === "search" && subject) {
     await printSearch(positionals.slice(1).join(" "));
@@ -265,6 +282,7 @@ function printPackagedIntegrationReview(packagedIntegration: PackagedIntegration
   console.log(`- ID: ${packagedIntegration.manifest.id}`);
   console.log(`- Version: ${packagedIntegration.manifest.version}`);
   console.log(`- Trust: ${formatTrustLabel(packagedIntegration.manifest.trust)}`);
+  console.log(`- Setup maturity: ${formatSetupMaturityLabel(packagedIntegration.manifest.setupMaturity)}`);
   console.log(`- Integrity: sha256:${packagedIntegration.integrity.digest}`);
   console.log("");
   console.log("Security Review");
@@ -306,7 +324,7 @@ async function printLocalIntegrationList(): Promise<void> {
       (candidate) => candidate.manifest.source?.path?.endsWith(entry.path)
     );
     const label = integration
-      ? `${integration.manifest.id}: ${integration.manifest.name} (${formatTrustLabel(integration.manifest.trust)})`
+      ? `${integration.manifest.id}: ${integration.manifest.name} (${formatTrustLabel(integration.manifest.trust)}, ${formatSetupMaturityLabel(integration.manifest.setupMaturity)})`
       : entry.path;
     console.log(`- ${label}`);
   }
@@ -789,11 +807,22 @@ async function resolveIntegration(
     capability.id,
     context
   );
+  const nativeSupport = integrationRegistry.findNativeCapabilitySupport(
+    capability.id,
+    context
+  );
   if (recommendations.length === 1) {
     return recommendations[0]?.integration;
   }
 
   if (recommendations.length === 0) {
+    if (nativeSupport) {
+      console.log(
+        `${capability.name} is provided natively by ${nativeSupport.framework}: ${nativeSupport.description}`
+      );
+      return undefined;
+    }
+
     console.error(
       `No compatible ${capability.name} integrations are available for this project yet.`
     );
@@ -1007,6 +1036,7 @@ function formatDoctorJson(
       capability: entry.integration.manifest.capability,
       status: entry.integration.manifest.status,
       trust: entry.integration.manifest.trust,
+      setupMaturity: entry.integration.manifest.setupMaturity,
       health: entry.verification.health,
       checks: entry.verification.checks,
       diagnostics: entry.verification.diagnostics
@@ -1039,6 +1069,7 @@ function printHelp(): void {
 
 Usage:
   avis
+  avis --version
   avis add
   avis add <capability>
   avis add zustand
@@ -1057,7 +1088,78 @@ Usage:
   avis integration inspect <package-path>
   avis integration install <package-path>
   avis doctor [--json] [--strict]
+  avis upgrade
 `);
+}
+
+function printVersion(): void {
+  console.log(`avis ${readAvisPackageVersion()}`);
+}
+
+function printUpgradeInstructions(): void {
+  console.log(`Avis ${readAvisPackageVersion()}`);
+  console.log("");
+  console.log("To install the newest alpha release:");
+  console.log("  npm install -g avis-dev@alpha");
+  console.log("");
+  console.log("To inspect npm's current dist-tags:");
+  console.log("  npm dist-tag ls avis-dev");
+  console.log("");
+  console.log("After upgrading, verify the installed CLI:");
+  console.log("  avis --version");
+}
+
+function readAvisPackageVersion(): string {
+  const packageJsonPath = findAvisPackageJsonPath(path.dirname(fileURLToPath(import.meta.url)));
+  if (!packageJsonPath) {
+    return "unknown";
+  }
+
+  const parsed = JSON.parse(readFileSync(packageJsonPath, "utf8")) as unknown;
+  if (!isPackageMetadata(parsed)) {
+    return "unknown";
+  }
+
+  return parsed.version;
+}
+
+function findAvisPackageJsonPath(startDirectory: string): string | undefined {
+  let currentDirectory = startDirectory;
+
+  while (true) {
+    const packageJsonPath = path.join(currentDirectory, "package.json");
+    const parsed = readPackageMetadata(packageJsonPath);
+    if (isPackageMetadata(parsed)) {
+      return packageJsonPath;
+    }
+
+    const parentDirectory = path.dirname(currentDirectory);
+    if (parentDirectory === currentDirectory) {
+      return undefined;
+    }
+
+    currentDirectory = parentDirectory;
+  }
+}
+
+function readPackageMetadata(packageJsonPath: string): unknown {
+  try {
+    return JSON.parse(readFileSync(packageJsonPath, "utf8")) as unknown;
+  } catch {
+    return undefined;
+  }
+}
+
+function isPackageMetadata(value: unknown): value is { name: string; version: string } {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "name" in value &&
+    "version" in value &&
+    typeof value.name === "string" &&
+    typeof value.version === "string" &&
+    value.name === avisPackageName
+  );
 }
 
 async function printSearch(query: string): Promise<void> {
@@ -1090,7 +1192,7 @@ async function printList(): Promise<void> {
   console.log("Integrations:");
   for (const integration of runtime.registry.integrations) {
     console.log(
-      `- ${integration.manifest.id}: ${integration.manifest.name} (${integration.manifest.capability}, ${formatStatusLabel(integration.manifest.status)}, ${formatTrustLabel(integration.manifest.trust)})`
+      `- ${integration.manifest.id}: ${integration.manifest.name} (${integration.manifest.capability}, ${formatStatusLabel(integration.manifest.status)}, ${formatTrustLabel(integration.manifest.trust)}, ${formatSetupMaturityLabel(integration.manifest.setupMaturity)})`
     );
   }
 }
@@ -1124,6 +1226,15 @@ async function printShow(subject: string): Promise<void> {
     console.log(
       `- Defaults: ${formatCapabilityDefaults(capability.defaultIntegrations)}`
     );
+    console.log(
+      `- Framework defaults: ${formatCapabilityDefaults(capability.defaultFrameworkIntegrations)}`
+    );
+    console.log(
+      `- Project type defaults: ${formatCapabilityDefaults(capability.defaultProjectTypeIntegrations)}`
+    );
+    console.log(
+      `- Native framework support: ${formatCapabilityDefaults(capability.nativeFrameworkSupport)}`
+    );
 
     console.log("");
     console.log("Integrations:");
@@ -1134,7 +1245,7 @@ async function printShow(subject: string): Promise<void> {
 
     for (const candidate of integrations) {
       console.log(
-        `- ${candidate.manifest.id}: ${candidate.manifest.name} (${formatStatusLabel(candidate.manifest.status)}, ${formatTrustLabel(candidate.manifest.trust)})`
+        `- ${candidate.manifest.id}: ${candidate.manifest.name} (${formatStatusLabel(candidate.manifest.status)}, ${formatTrustLabel(candidate.manifest.trust)}, ${formatSetupMaturityLabel(candidate.manifest.setupMaturity)})`
       );
     }
     return;
@@ -1157,6 +1268,7 @@ function printIntegrationDetails(integration: AvisIntegration): void {
   console.log(`- Version: ${manifest.version}`);
   console.log(`- Status: ${formatStatusLabel(manifest.status)}`);
   console.log(`- Trust: ${formatTrustLabel(manifest.trust)}`);
+  console.log(`- Setup maturity: ${formatSetupMaturityLabel(manifest.setupMaturity)}`);
   console.log("");
   console.log("Supports");
   console.log(`- Ecosystems: ${formatList(manifest.supports.ecosystems)}`);
@@ -1229,6 +1341,7 @@ function printCapabilityRecommendations(
     console.log(`   ID: ${recommendation.integration.manifest.id}`);
     console.log(`   Status: ${formatStatusLabel(recommendation.integration.manifest.status)}`);
     console.log(`   Trust: ${formatTrustLabel(recommendation.integration.manifest.trust)}`);
+    console.log(`   Setup maturity: ${formatSetupMaturityLabel(recommendation.integration.manifest.setupMaturity)}`);
     console.log(`   ${recommendation.integration.manifest.description}`);
     console.log("   Why:");
     for (const reason of recommendation.reasons) {
@@ -1296,6 +1409,19 @@ function formatTrustLabel(trust: AvisIntegration["manifest"]["trust"]): string {
       return "Local";
     case "experimental":
       return "Experimental";
+  }
+}
+
+function formatSetupMaturityLabel(
+  maturity: AvisIntegration["manifest"]["setupMaturity"]
+): string {
+  switch (maturity) {
+    case "install":
+      return "Install";
+    case "configure":
+      return "Configure";
+    case "managed":
+      return "Managed";
   }
 }
 
@@ -1391,6 +1517,7 @@ function createManifestTemplate(integrationId: string): string {
       version: "0.1.0",
       status: "experimental",
       trust: "local",
+      setupMaturity: "install",
       supports: {
         ecosystems: ["node"],
         frameworks: ["nextjs"],
@@ -1550,6 +1677,16 @@ function parseArgs(args: string[]): { positionals: string[]; options: CliOptions
 }
 
 runCli().catch((error: unknown) => {
+  if (error instanceof ApplyChangePlanError) {
+    console.error(error.message);
+    for (const diagnostic of error.diagnostics) {
+      const prefix = diagnostic.severity === "error" ? "Error" : "Warning";
+      console.error(`${prefix}: ${diagnostic.message}`);
+    }
+    process.exitCode = 1;
+    return;
+  }
+
   const message = error instanceof Error ? error.message : String(error);
   console.error(message);
   process.exitCode = 1;

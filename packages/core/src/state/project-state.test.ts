@@ -98,6 +98,7 @@ const integration: AvisIntegration = {
     version: "1.0.0",
     status: "stable",
     trust: "official",
+    setupMaturity: "configure",
     supports: {
       ecosystems: ["node"]
     }

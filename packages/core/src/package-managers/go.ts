@@ -4,6 +4,7 @@ import { ecosystems, packageManagers } from "../types/ids.js";
 import type { PackageManagerId } from "../types/ids.js";
 import type {
   DependencyInstallRequest,
+  DependencyRemoveRequest,
   PackageManagerAdapter,
   PackageManagerCommand
 } from "./types.js";
@@ -58,6 +59,14 @@ export function createGoPackageManagerAdapter(
     ): PackageManagerCommand => ({
       command: "go",
       args: ["get", ...request.packages.map((packageSpec) => packageSpec.name)],
+      cwd: context.targetRoot
+    }),
+    buildRemoveCommand: (
+      context: ProjectContext,
+      request: DependencyRemoveRequest
+    ): PackageManagerCommand => ({
+      command: "go",
+      args: ["get", ...request.packages.map((packageName) => `${packageName}@none`)],
       cwd: context.targetRoot
     })
   };

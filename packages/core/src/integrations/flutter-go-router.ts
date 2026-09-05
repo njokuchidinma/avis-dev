@@ -20,6 +20,7 @@ export const flutterGoRouterIntegration: AvisIntegration = {
     version: "1.0.0",
     status: "stable",
     trust: "official",
+    setupMaturity: "configure",
     supports: {
       ecosystems: [ecosystems.dart],
       frameworks: [frameworks.flutter],

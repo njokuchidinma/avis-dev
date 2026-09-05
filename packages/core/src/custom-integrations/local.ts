@@ -285,6 +285,14 @@ function parseLocalIntegrationManifest(value: unknown): AvisIntegrationManifest 
     throw new Error("avis.integration.json has an invalid status.");
   }
 
+  if (!isIntegrationSetupMaturity(value.setupMaturity)) {
+    throw new Error("avis.integration.json has an invalid setup maturity.");
+  }
+
+  if (value.setupMaturity === "managed" && value.repair !== "plan") {
+    throw new Error("avis.integration.json declares managed setup without repair plan support.");
+  }
+
   if (!isIntegrationSupport(value.supports)) {
     throw new Error("avis.integration.json has invalid support metadata.");
   }
@@ -297,6 +305,7 @@ function parseLocalIntegrationManifest(value: unknown): AvisIntegrationManifest 
     version: value.version,
     status: value.status,
     trust: "local",
+    setupMaturity: value.setupMaturity,
     supports: value.supports,
     dependencies: isDependencyRequirements(value.dependencies)
       ? value.dependencies
@@ -517,6 +526,12 @@ function isVerificationCheck(value: unknown): boolean {
 
 function isIntegrationStatus(value: unknown): value is AvisIntegrationManifest["status"] {
   return value === "experimental" || value === "stable" || value === "deprecated";
+}
+
+function isIntegrationSetupMaturity(
+  value: unknown
+): value is AvisIntegrationManifest["setupMaturity"] {
+  return value === "install" || value === "configure" || value === "managed";
 }
 
 function isIntegrationHealth(value: unknown): value is VerificationResult["health"] {

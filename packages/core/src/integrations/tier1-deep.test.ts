@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
@@ -92,6 +92,75 @@ describe("Tier 1 deep integrations", () => {
 
     expect(repairedVerification?.health).toBe("healthy");
     expect(secondPlan.operations).toEqual([]);
+  });
+
+  it("generates correct Next.js Auth.js route imports for root and src app layouts", async () => {
+    const rootApp = await createTempProject({
+      "package.json": JSON.stringify(
+        {
+          name: "next-app",
+          packageManager: "pnpm@11.24.0",
+          dependencies: {
+            next: "16.0.0",
+            react: "20.0.0",
+            "next-auth": "beta"
+          },
+          devDependencies: {
+            typescript: "7.0.2"
+          }
+        },
+        null,
+        2
+      ),
+      "pnpm-lock.yaml": "",
+      "tsconfig.json": JSON.stringify({}),
+      "app/page.tsx": "export default function Page() { return null; }\n"
+    });
+    const srcApp = await createTempProject({
+      "package.json": JSON.stringify(
+        {
+          name: "next-app",
+          packageManager: "pnpm@11.24.0",
+          dependencies: {
+            next: "16.0.0",
+            react: "20.0.0",
+            "next-auth": "beta"
+          },
+          devDependencies: {
+            typescript: "7.0.2"
+          }
+        },
+        null,
+        2
+      ),
+      "pnpm-lock.yaml": "",
+      "tsconfig.json": JSON.stringify({}),
+      "src/app/page.tsx": "export default function Page() { return null; }\n"
+    });
+
+    await applyChangePlan(
+      await nextAuthIntegration.plan({
+        context: createProjectContext(await detectNodeProject(rootApp))
+      })
+    );
+    await applyChangePlan(
+      await nextAuthIntegration.plan({
+        context: createProjectContext(await detectNodeProject(srcApp))
+      })
+    );
+
+    await expect(
+      readFile(
+        path.join(rootApp, "app/api/auth/[...nextauth]/route.ts"),
+        "utf8"
+      )
+    ).resolves.toContain('from "../../../../auth"');
+    await expect(
+      readFile(
+        path.join(srcApp, "src/app/api/auth/[...nextauth]/route.ts"),
+        "utf8"
+      )
+    ).resolves.toContain('from "../../../../auth"');
   });
 
   it("repairs a partial Django CORS setup and stays idempotent", async () => {

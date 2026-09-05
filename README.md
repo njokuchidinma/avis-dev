@@ -73,6 +73,24 @@ avis add state-management
 avis add icons --dry-run
 ```
 
+Check the installed CLI version:
+
+```sh
+avis --version
+```
+
+Update an existing alpha install:
+
+```sh
+npm install -g avis-dev@alpha
+```
+
+Avis can print update instructions too:
+
+```sh
+avis upgrade
+```
+
 Avis itself is not an application dependency. Do not add Avis to `requirements.txt`, `pyproject.toml`, `composer.json`, `pubspec.yaml`, `Cargo.toml`, or equivalent project dependency files.
 
 During alpha, npm is the distribution channel for the Avis CLI. When Avis operates inside a project, it uses that project's native package manager.

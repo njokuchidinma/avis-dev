@@ -5,10 +5,45 @@ description: Checks to run before publishing an Avis alpha package to npm.
 
 Avis publishes the CLI package as `avis-dev` and exposes the `avis` binary.
 
+The automated npm workflow runs when a version tag is pushed. Ordinary Git
+pushes run CI and documentation deployment, but do not publish a package.
+
 During alpha, publish with the alpha tag:
 
 ```sh
 npm publish --tag alpha
+```
+
+The release workflow also moves npm's `latest` tag to the newly published
+version. This means the newest alpha is discoverable through both `latest`
+and `alpha` until a stable release is available.
+
+## Automated Release
+
+Create a version tag that exactly matches the root `package.json` version:
+
+```sh
+git tag v0.1.0-alpha.2
+git push origin v0.1.0-alpha.2
+```
+
+The workflow validates the tag, runs `pnpm release:check`, publishes the
+package, updates `latest`, and verifies the published npm tags. Stable tags
+such as `v0.1.0` publish to `latest` as well.
+
+Configure npm Trusted Publishing for the `njokuchidinma/avis-dev` repository
+and the `npm-publish.yml` workflow. The workflow uses its OIDC identity for
+`npm publish`, so no publish token is exposed to package lifecycle scripts.
+
+The repository must also have an `NPM_TOKEN` secret with permission to manage
+the `avis-dev` dist-tags. npm's OIDC trusted publishing does not authenticate
+`npm dist-tag` or `npm view` commands, so this token is used only after the
+publish step. Keep it as a protected repository or environment secret.
+
+Inspect the tags after a release:
+
+```sh
+npm dist-tag ls avis-dev
 ```
 
 ## Required Checks
