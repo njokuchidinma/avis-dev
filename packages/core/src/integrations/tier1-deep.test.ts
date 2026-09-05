@@ -15,6 +15,7 @@ import { djangoCorsHeadersIntegration } from "./django-cors-headers.js";
 import { flutterGoRouterIntegration } from "./flutter-go-router.js";
 import { laravelPestIntegration } from "./laravel-pest.js";
 import { nextAuthIntegration } from "./next-auth.js";
+import { celeryIntegration } from "./official-capability-integrations.js";
 
 describe("Tier 1 deep integrations", () => {
   it("registers deep Tier 1 defaults in the built-in catalog", () => {
@@ -201,6 +202,52 @@ MIDDLEWARE = [
 
     const repairedVerification = await djangoCorsHeadersIntegration.verify?.(context);
     const secondPlan = await djangoCorsHeadersIntegration.plan({ context });
+
+    expect(repairedVerification?.health).toBe("healthy");
+    expect(secondPlan.operations).toEqual([]);
+  });
+
+  it("repairs a partial Django Celery setup and stays idempotent", async () => {
+    const root = await createTempProject({
+      "pyproject.toml": `[project]
+name = "django-app"
+dependencies = [
+  "django>=5.0",
+  "celery>=5.4"
+]
+`,
+      "uv.lock": "",
+      "manage.py": `import os
+
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings")
+`,
+      "config/settings.py": `INSTALLED_APPS = [
+    "django.contrib.admin",
+]
+`
+    });
+
+    const context = createProjectContext(await detectPythonProject(root));
+    const initialVerification = await celeryIntegration.verify?.(context);
+    const repairPlan = await celeryIntegration.plan({ context });
+
+    expect(initialVerification?.health).toBe("partial");
+    expect(repairPlan.operations.map((operation) => operation.id)).toEqual([
+      "create-django-celery-app",
+      "document-celery-broker-url"
+    ]);
+
+    await applyChangePlan(repairPlan);
+
+    await expect(readFile(path.join(root, "config/celery.py"), "utf8")).resolves.toContain(
+      'os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings")'
+    );
+    await expect(readFile(path.join(root, ".env.example"), "utf8")).resolves.toContain(
+      "CELERY_BROKER_URL=redis://localhost:6379/0"
+    );
+
+    const repairedVerification = await celeryIntegration.verify?.(context);
+    const secondPlan = await celeryIntegration.plan({ context });
 
     expect(repairedVerification?.health).toBe("healthy");
     expect(secondPlan.operations).toEqual([]);

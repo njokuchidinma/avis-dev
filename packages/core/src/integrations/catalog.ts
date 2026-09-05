@@ -194,6 +194,9 @@ export const builtInCapabilities: Capability[] = [
       [ecosystems.node]: "bullmq",
       [ecosystems.python]: "celery",
       [ecosystems.php]: "laravel-horizon"
+    },
+    defaultFrameworkIntegrations: {
+      django: "celery"
     }
   },
   {

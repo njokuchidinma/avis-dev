@@ -21,7 +21,7 @@ export const djangoRestFrameworkIntegration: AvisIntegration = {
     version: "1.0.0",
     status: "stable",
     trust: "official",
-    setupMaturity: "configure",
+    setupMaturity: "managed",
     supports: {
       ecosystems: [ecosystems.python],
       frameworks: [frameworks.django],
@@ -29,6 +29,7 @@ export const djangoRestFrameworkIntegration: AvisIntegration = {
     },
     dependencies: [{ name: packageName, type: "runtime" }],
     configures: ["runtime dependency", "rest_framework installed app"],
+    repair: "plan",
     source: { owner: "avis" }
   },
   isCompatible: isDjangoRestFrameworkCompatible,

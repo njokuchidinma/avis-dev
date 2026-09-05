@@ -715,6 +715,12 @@ async function runRepair(subject: string, options: CliOptions): Promise<void> {
     return;
   }
 
+  if (integration.manifest.repair !== "plan") {
+    console.error(`${integration.manifest.name} does not declare repair plan support yet.`);
+    process.exitCode = 1;
+    return;
+  }
+
   const verification = await integration.verify(context);
   if (verification.health === "healthy") {
     console.log(`${integration.manifest.name} is already healthy.`);
@@ -1676,7 +1682,16 @@ function parseArgs(args: string[]): { positionals: string[]; options: CliOptions
   return { positionals, options };
 }
 
-runCli().catch((error: unknown) => {
+if (isEntrypoint()) {
+  runCli().catch(handleCliError);
+}
+
+function isEntrypoint(): boolean {
+  const entrypoint = process.argv[1];
+  return entrypoint ? path.resolve(fileURLToPath(import.meta.url)) === path.resolve(entrypoint) : false;
+}
+
+function handleCliError(error: unknown): void {
   if (error instanceof ApplyChangePlanError) {
     console.error(error.message);
     for (const diagnostic of error.diagnostics) {
@@ -1690,4 +1705,4 @@ runCli().catch((error: unknown) => {
   const message = error instanceof Error ? error.message : String(error);
   console.error(message);
   process.exitCode = 1;
-});
+}

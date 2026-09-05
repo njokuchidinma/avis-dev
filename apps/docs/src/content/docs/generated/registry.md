@@ -25,7 +25,7 @@ This page is generated from Avis capability and integration manifests.
 | `orm` | Object-relational mapping and query builders. | any | `python`: `sqlalchemy`, `go`: `gorm` | none | none | none | no |
 | `migrations` | Database schema migration tooling. | any | none | none | none | none | no |
 | `caching` | Application cache clients and cache configuration. | any | `node`: `redis-node`, `python`: `django-redis`, `php`: `predis`, `go`: `go-redis` | none | none | none | no |
-| `background-jobs` | Asynchronous work processing. | `jobs`, `workers` | `node`: `bullmq`, `python`: `celery`, `php`: `laravel-horizon` | none | none | none | no |
+| `background-jobs` | Asynchronous work processing. | `jobs`, `workers` | `node`: `bullmq`, `python`: `celery`, `php`: `laravel-horizon` | `django`: `celery` | none | none | no |
 | `queues` | Queue-backed task processing. | any | none | none | none | none | no |
 | `messaging` | Message broker and event-stream integrations. | any | none | none | none | none | no |
 | `logging` | Structured application logging. | any | none | none | none | none | no |
@@ -54,14 +54,14 @@ This page is generated from Avis capability and integration manifests.
 | `zustand` | `state-management` | stable | official | configure | `node` | `nextjs` | `npm`, `pnpm`, `yarn`, `bun` |
 | `redux-toolkit` | `state-management` | stable | official | configure | `node` | `nextjs` | `npm`, `pnpm`, `yarn`, `bun` |
 | `tanstack-query` | `data-fetching` | stable | official | configure | `node` | `nextjs` | `npm`, `pnpm`, `yarn`, `bun` |
-| `django-rest-framework` | `api` | stable | official | configure | `python` | `django` | `pip`, `uv`, `poetry` |
+| `django-rest-framework` | `api` | stable | official | managed | `python` | `django` | `pip`, `uv`, `poetry` |
 | `react-hook-form` | `forms` | stable | official | configure | `node` | `nextjs` | `npm`, `pnpm`, `yarn`, `bun` |
 | `zod` | `validation` | stable | official | configure | `node` | `nextjs` | `npm`, `pnpm`, `yarn`, `bun` |
 | `laravel-sanctum` | `auth` | stable | official | install | `php` | `laravel` | `composer` |
 | `flutter-riverpod` | `state-management` | stable | official | configure | `dart` | `flutter` | `pub` |
 | `rust-tracing` | `observability` | stable | official | install | `rust` | any | `cargo` |
 | `next-auth` | `auth` | experimental | official | configure | `node` | `nextjs` | `npm`, `pnpm`, `yarn`, `bun` |
-| `django-cors-headers` | `security` | stable | official | configure | `python` | `django` | `pip`, `uv`, `poetry` |
+| `django-cors-headers` | `security` | stable | official | managed | `python` | `django` | `pip`, `uv`, `poetry` |
 | `laravel-pest` | `testing` | stable | community | configure | `php` | `laravel` | `composer` |
 | `flutter-go-router` | `routing` | stable | official | configure | `dart` | `flutter` | `pub` |
 | `lucide-react` | `icons` | stable | official | install | `node` | `nextjs` | `npm`, `pnpm`, `yarn`, `bun` |
@@ -92,7 +92,7 @@ This page is generated from Avis capability and integration manifests.
 | `predis` | `caching` | stable | verified | install | `php` | any | `composer` |
 | `go-redis` | `caching` | stable | official | install | `go` | any | `go` |
 | `bullmq` | `background-jobs` | stable | verified | install | `node` | any | `npm`, `pnpm`, `yarn`, `bun` |
-| `celery` | `background-jobs` | stable | official | install | `python` | any | `pip`, `uv`, `poetry` |
+| `celery` | `background-jobs` | stable | official | configure | `python` | `django` | `pip`, `uv`, `poetry` |
 | `laravel-horizon` | `background-jobs` | stable | official | install | `php` | `laravel` | `composer` |
 | `resend-node` | `email` | stable | official | install | `node` | any | `npm`, `pnpm`, `yarn`, `bun` |
 | `django-anymail` | `email` | stable | verified | install | `python` | `django` | `pip`, `uv`, `poetry` |

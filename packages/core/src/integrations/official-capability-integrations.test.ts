@@ -225,12 +225,6 @@ describe("official capability integrations", () => {
         operationId: "add-bullmq"
       },
       {
-        integrationId: "celery",
-        context: contexts.python,
-        packageManager: "uv",
-        operationId: "add-celery"
-      },
-      {
         integrationId: "laravel-horizon",
         context: contexts.laravel,
         packageManager: "composer",
