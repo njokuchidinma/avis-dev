@@ -159,6 +159,15 @@ export class IntegrationRegistry {
     );
   }
 
+  findAvailableCapabilities(context: ProjectContext): Capability[] {
+    return this.capabilities.filter((capability) => {
+      return this.findCompatibleIntegrationsForCapability(
+        capability.id,
+        context
+      ).length > 0;
+    });
+  }
+
   findCompatibleIntegrationsForCapability(
     capabilityId: string,
     context: ProjectContext
@@ -396,6 +405,8 @@ function formatTrustLabel(trust: AvisIntegrationManifest["trust"]): string {
       return "verified";
     case "community":
       return "community";
+    case "local":
+      return "local";
     case "experimental":
       return "experimental";
   }
@@ -488,7 +499,7 @@ export function validateIntegrationManifest(
     errors.push("Integration status is invalid.");
   }
 
-  if (!["official", "verified", "community", "experimental"].includes(manifest.trust)) {
+  if (!["official", "verified", "community", "local", "experimental"].includes(manifest.trust)) {
     errors.push("Integration trust level is invalid.");
   }
 

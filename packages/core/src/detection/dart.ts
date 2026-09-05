@@ -4,9 +4,16 @@ import type {
   DetectionEvidence,
   DetectionResult,
   FrameworkMatch,
-  PackageManagerMatch
+  PackageManagerMatch,
+  ProjectTypeMatch
 } from "./types.js";
-import { ecosystems, frameworks, languages, packageManagers } from "../types/ids.js";
+import {
+  ecosystems,
+  frameworks,
+  languages,
+  packageManagers,
+  projectTypes
+} from "../types/ids.js";
 
 export async function detectDartProject(root: string): Promise<DetectionResult> {
   const pubspecPath = path.join(root, "pubspec.yaml");
@@ -33,6 +40,7 @@ export async function detectDartProject(root: string): Promise<DetectionResult> 
   };
   const packageManagerMatches = await detectDartPackageManagers(root);
   const frameworkMatches = detectDartFrameworks(pubspec);
+  const projectTypeMatches = detectDartProjectTypes(frameworkMatches);
 
   return {
     root,
@@ -48,13 +56,15 @@ export async function detectDartProject(root: string): Promise<DetectionResult> 
         },
         languages: [languages.dart],
         frameworks: frameworkMatches,
-        packageManagers: packageManagerMatches
+        packageManagers: packageManagerMatches,
+        projectTypes: projectTypeMatches
       }
     ],
     evidence: [
       projectEvidence,
       ...packageManagerMatches.flatMap((match) => match.evidence),
-      ...frameworkMatches.flatMap((match) => match.evidence)
+      ...frameworkMatches.flatMap((match) => match.evidence),
+      ...projectTypeMatches.flatMap((match) => match.evidence)
     ],
     diagnostics: []
   };
@@ -101,6 +111,24 @@ export function detectDartFrameworks(pubspec: string): FrameworkMatch[] {
             : "Found Flutter configuration section."
         }
       ]
+    }
+  ];
+}
+
+export function detectDartProjectTypes(
+  frameworkMatches: FrameworkMatch[]
+): ProjectTypeMatch[] {
+  const flutterMatch = frameworkMatches.find((match) => match.id === frameworks.flutter);
+
+  if (!flutterMatch) {
+    return [];
+  }
+
+  return [
+    {
+      id: projectTypes.mobile,
+      confidence: flutterMatch.confidence,
+      evidence: flutterMatch.evidence
     }
   ];
 }

@@ -22,6 +22,26 @@ describe("IntegrationRegistry", () => {
     expect(registry.findCompatibleIntegrations(unknownNodeContext)).toEqual([]);
   });
 
+  it("finds only relevant capabilities with compatible integrations", () => {
+    const registry = new IntegrationRegistry({
+      capabilities: [
+        {
+          id: "icons",
+          name: "Icons"
+        },
+        {
+          id: "database",
+          name: "Database"
+        }
+      ],
+      integrations: [lucideReactIntegration]
+    });
+
+    expect(registry.findAvailableCapabilities(nextContext).map((capability) => capability.id)).toEqual([
+      "icons"
+    ]);
+  });
+
   it("groups integrations by supported ecosystem and framework", () => {
     const registry = new IntegrationRegistry({
       capabilities: [],
@@ -204,6 +224,30 @@ describe("manifest validation", () => {
         "Integration version is required.",
         "Integration must support at least one ecosystem."
       ]
+    });
+  });
+
+  it("accepts local integration trust metadata", () => {
+    expect(
+      validateIntegrationManifest({
+        id: "company-auth",
+        name: "Company Auth",
+        description: "Internal auth package.",
+        capability: "auth",
+        version: "0.1.0",
+        status: "experimental",
+        trust: "local",
+        supports: {
+          ecosystems: ["node"]
+        },
+        source: {
+          owner: "local",
+          path: "company-auth"
+        }
+      })
+    ).toEqual({
+      valid: true,
+      errors: []
     });
   });
 
