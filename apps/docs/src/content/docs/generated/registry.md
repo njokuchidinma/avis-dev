@@ -73,8 +73,8 @@ This page is generated from Avis capability and integration manifests.
 | `axum-tower-http` | `api` | stable | official | install | `rust` | `axum` | `cargo` |
 | `gin-validator` | `validation` | stable | official | install | `go` | `gin` | `go` |
 | `django-simple-jwt` | `auth` | stable | verified | install | `python` | `django` | `pip`, `uv`, `poetry` |
-| `sentry-nextjs` | `monitoring` | stable | official | install | `node` | `nextjs` | `npm`, `pnpm`, `yarn`, `bun` |
-| `sentry-python` | `monitoring` | stable | official | install | `python` | any | `pip`, `uv`, `poetry` |
+| `sentry-nextjs` | `monitoring` | stable | official | configure | `node` | `nextjs` | `npm`, `pnpm`, `yarn`, `bun` |
+| `sentry-python` | `monitoring` | stable | official | configure | `python` | any | `pip`, `uv`, `poetry` |
 | `sentry-laravel` | `monitoring` | stable | official | install | `php` | `laravel` | `composer` |
 | `sentry-flutter` | `monitoring` | stable | official | install | `dart` | `flutter` | `pub` |
 | `sentry-rust` | `monitoring` | stable | official | install | `rust` | any | `cargo` |
@@ -85,22 +85,22 @@ This page is generated from Avis capability and integration manifests.
 | `psycopg` | `database` | stable | official | install | `python` | any | `pip`, `uv`, `poetry` |
 | `rust-sqlx` | `database` | stable | verified | install | `rust` | any | `cargo` |
 | `go-pgx` | `database` | stable | verified | install | `go` | any | `go` |
-| `sqlalchemy` | `orm` | stable | official | install | `python` | any | `pip`, `uv`, `poetry` |
+| `sqlalchemy` | `orm` | stable | official | configure | `python` | any | `pip`, `uv`, `poetry` |
 | `gorm` | `orm` | stable | verified | install | `go` | any | `go` |
-| `redis-node` | `caching` | stable | official | install | `node` | any | `npm`, `pnpm`, `yarn`, `bun` |
-| `django-redis` | `caching` | stable | verified | install | `python` | `django` | `pip`, `uv`, `poetry` |
+| `redis-node` | `caching` | stable | official | configure | `node` | any | `npm`, `pnpm`, `yarn`, `bun` |
+| `django-redis` | `caching` | stable | verified | configure | `python` | `django` | `pip`, `uv`, `poetry` |
 | `predis` | `caching` | stable | verified | install | `php` | any | `composer` |
 | `go-redis` | `caching` | stable | official | install | `go` | any | `go` |
 | `bullmq` | `background-jobs` | stable | verified | install | `node` | any | `npm`, `pnpm`, `yarn`, `bun` |
 | `celery` | `background-jobs` | stable | official | configure | `python` | `django` | `pip`, `uv`, `poetry` |
 | `laravel-horizon` | `background-jobs` | stable | official | install | `php` | `laravel` | `composer` |
-| `resend-node` | `email` | stable | official | install | `node` | any | `npm`, `pnpm`, `yarn`, `bun` |
-| `django-anymail` | `email` | stable | verified | install | `python` | `django` | `pip`, `uv`, `poetry` |
-| `aws-sdk-s3` | `storage` | stable | official | install | `node` | any | `npm`, `pnpm`, `yarn`, `bun` |
-| `django-storages` | `storage` | stable | verified | install | `python` | `django` | `pip`, `uv`, `poetry` |
+| `resend-node` | `email` | stable | official | configure | `node` | any | `npm`, `pnpm`, `yarn`, `bun` |
+| `django-anymail` | `email` | stable | verified | configure | `python` | `django` | `pip`, `uv`, `poetry` |
+| `aws-sdk-s3` | `storage` | stable | official | configure | `node` | any | `npm`, `pnpm`, `yarn`, `bun` |
+| `django-storages` | `storage` | stable | verified | configure | `python` | `django` | `pip`, `uv`, `poetry` |
 | `flysystem-s3` | `storage` | stable | verified | install | `php` | any | `composer` |
-| `drf-spectacular` | `api-documentation` | stable | verified | install | `python` | `django` | `pip`, `uv`, `poetry` |
-| `swagger-ui-express` | `api-documentation` | stable | verified | install | `node` | `express` | `npm`, `pnpm`, `yarn`, `bun` |
+| `drf-spectacular` | `api-documentation` | stable | verified | configure | `python` | `django` | `pip`, `uv`, `poetry` |
+| `swagger-ui-express` | `api-documentation` | stable | verified | configure | `node` | `express` | `npm`, `pnpm`, `yarn`, `bun` |
 | `dotenv` | `configuration` | stable | verified | install | `node` | any | `npm`, `pnpm`, `yarn`, `bun` |
 | `phpdotenv` | `configuration` | stable | verified | install | `php` | any | `composer` |
 | `rust-config` | `configuration` | stable | verified | install | `rust` | any | `cargo` |

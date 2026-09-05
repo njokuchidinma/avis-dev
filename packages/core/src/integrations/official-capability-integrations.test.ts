@@ -311,14 +311,128 @@ describe("official capability integrations", () => {
       const plan = await integration?.plan({ context: testCase.context });
 
       expect(plan?.diagnostics).toEqual([]);
-      expect(plan?.operations).toMatchObject([
-        {
-          id: testCase.operationId,
-          type: "dependency.add",
-          packageManager: testCase.packageManager,
-          dependencyType: testCase.dependencyType ?? "runtime"
-        }
-      ]);
+      expect(plan?.operations).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            id: testCase.operationId,
+            type: "dependency.add",
+            packageManager: testCase.packageManager,
+            dependencyType: testCase.dependencyType ?? "runtime"
+          })
+        ])
+      );
+    }
+  });
+
+  it("plans additive configuration for deepened official integrations", async () => {
+    const contexts = await createContexts();
+    const cases: Array<{
+      integrationId: string;
+      context: ProjectContext;
+      operationIds: string[];
+      configures: string[];
+    }> = [
+      {
+        integrationId: "sentry-nextjs",
+        context: contexts.nextjs,
+        operationIds: [
+          "create-sentry-nextjs-client-config",
+          "document-sentry-nextjs-dsn"
+        ],
+        configures: ["client-side Sentry initializer", "SENTRY_DSN example"]
+      },
+      {
+        integrationId: "sentry-python",
+        context: contexts.python,
+        operationIds: [
+          "create-python-sentry-initializer",
+          "document-sentry-python-dsn"
+        ],
+        configures: ["Python Sentry initializer", "SENTRY_DSN example"]
+      },
+      {
+        integrationId: "sqlalchemy",
+        context: contexts.python,
+        operationIds: [
+          "create-sqlalchemy-session-helper",
+          "document-sqlalchemy-database-url"
+        ],
+        configures: ["SQLAlchemy session helper", "DATABASE_URL example"]
+      },
+      {
+        integrationId: "redis-node",
+        context: contexts.node,
+        operationIds: ["create-node-redis-client", "document-node-redis-url"],
+        configures: ["Redis client helper", "REDIS_URL example"]
+      },
+      {
+        integrationId: "django-redis",
+        context: contexts.django,
+        operationIds: [
+          "create-django-redis-cache-settings",
+          "document-django-redis-url"
+        ],
+        configures: ["Django cache settings snippet", "REDIS_URL example"]
+      },
+      {
+        integrationId: "resend-node",
+        context: contexts.node,
+        operationIds: ["create-resend-email-client", "document-resend-api-key"],
+        configures: ["Resend client helper", "RESEND_API_KEY example"]
+      },
+      {
+        integrationId: "django-anymail",
+        context: contexts.django,
+        operationIds: [
+          "create-django-anymail-settings",
+          "document-django-anymail-env"
+        ],
+        configures: ["Django Anymail settings snippet", "email env examples"]
+      },
+      {
+        integrationId: "aws-sdk-s3",
+        context: contexts.node,
+        operationIds: ["create-node-s3-client", "document-node-s3-env"],
+        configures: ["S3 client helper", "S3 env examples"]
+      },
+      {
+        integrationId: "django-storages",
+        context: contexts.django,
+        operationIds: [
+          "create-django-storages-settings",
+          "document-django-storages-env"
+        ],
+        configures: ["Django S3 storage settings snippet", "S3 env examples"]
+      },
+      {
+        integrationId: "drf-spectacular",
+        context: contexts.django,
+        operationIds: ["create-drf-spectacular-settings"],
+        configures: ["Django OpenAPI settings snippet"]
+      },
+      {
+        integrationId: "swagger-ui-express",
+        context: contexts.express,
+        operationIds: ["create-express-openapi-helper"],
+        configures: ["Express OpenAPI helper"]
+      }
+    ];
+
+    for (const testCase of cases) {
+      const integration = findIntegrationById(testCase.integrationId);
+      expect(integration, testCase.integrationId).toBeDefined();
+      expect(integration?.manifest.setupMaturity).toBe("configure");
+      expect(integration?.manifest.repair).toBe("plan");
+      expect(integration?.manifest.configures).toEqual(
+        expect.arrayContaining(testCase.configures)
+      );
+
+      const plan = await integration?.plan({ context: testCase.context });
+
+      expect(plan?.diagnostics).toEqual([]);
+      expect(plan?.operations.map((operation) => operation.id)).toEqual(
+        expect.arrayContaining(testCase.operationIds)
+      );
     }
   });
 });
