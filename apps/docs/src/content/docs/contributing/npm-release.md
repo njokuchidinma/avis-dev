@@ -73,6 +73,17 @@ The smoke test verifies:
 - `avis stack list`
 - `avis integration list`
 
+## V3.1 Release Proof Points
+
+The V3.1 alpha release should demonstrate more than a successful TypeScript build:
+
+- the GitHub README and docs homepage explain the current setup maturity model
+- generated registry docs include the latest integration setup depth
+- the npm artifact installs and runs outside the monorepo
+- the CLI entrypoint works through npm's installed `.bin/avis` symlink
+- `avis repair` fails closed when managed files have changed outside Avis
+- managed integrations are backed by verifier behavior, repair-plan declarations, and fixture QA
+
 The test suite also validates the release catalog contract:
 
 - every detectable framework is present in the framework catalog
@@ -104,6 +115,7 @@ The npm package should stay small. The expected tarball contents are:
 
 - `dist/index.js`
 - `dist/index.js.map`
+- `CHANGELOG.md`
 - `package.json`
 - `README.md`
 - `LICENSE.md`

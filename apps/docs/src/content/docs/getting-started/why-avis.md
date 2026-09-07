@@ -27,4 +27,8 @@ Avis is more than installation. An integration can install dependencies, create 
 
 Avis is intended to be idempotent. Running an integration again should not duplicate starter files or configuration when the expected setup is already present.
 
-Avis is ecosystem agnostic by design. The current V2 alpha support covers Node, Python, PHP, Dart, and Rust projects through framework-specific capabilities and integrations.
+Avis is explicit about setup depth. V3.1 classifies integrations as `install`, `configure`, or `managed`, so the CLI can avoid promising more automation than an integration actually supports.
+
+Avis repair is conservative by design. `avis repair` only runs for integrations with declared repair-plan support, and it checks Avis' recorded file hashes before mutating managed files. If a file has changed outside Avis, repair stops for manual review instead of overwriting user work.
+
+Avis is ecosystem agnostic by design. The current V3.1 alpha support covers Node, Python, PHP, Dart, Rust, and Go project signals through framework-specific capabilities and integrations.

@@ -56,6 +56,20 @@ avis add state-management
 
 Avis can then recommend a compatible integration and show alternatives. Exact tool names such as `avis add lucide-react` still work when you already know what you want.
 
+## What's New in V3.1 Alpha
+
+V3.1 focuses on making Avis sturdier before broader release. The biggest changes are about truthful capability depth, safer repairs, and stronger release checks.
+
+- Integration setup is now classified as `install`, `configure`, or `managed`.
+- `avis repair` only runs for integrations with explicit repair-plan support.
+- Repair fails closed when Avis detects user-modified managed files instead of overwriting them.
+- Django REST Framework and django-cors-headers have managed setup and verification paths.
+- Configure-level slices now cover Sentry, Redis, SQLAlchemy, email, storage, API docs, and Celery patterns across supported ecosystems.
+- The release gate now packs the npm artifact, installs it into a clean temporary project, and exercises the shipped `avis` binary.
+- Registry contracts and fixture QA verify detectable frameworks, managed integration requirements, and realistic Next.js/Django setup flows.
+
+Avis is still alpha software, but V3.1 raises the bar from “can add integrations” to “can explain, verify, and safely constrain the work it performs.”
+
 ## Installation
 
 Install Avis once on your machine:
@@ -100,6 +114,8 @@ Before publishing a new alpha package, run:
 ```sh
 pnpm release:check
 ```
+
+This command builds the workspace, regenerates registry docs, validates catalog contracts, runs type checks/lint/tests, builds docs, packs the npm artifact, installs the generated tarball into a temporary project, and smoke-tests the shipped CLI.
 
 ## Local Development
 
@@ -157,20 +173,29 @@ avis show icons
 
 | Framework | Status | Purpose commands | Default integrations |
 | --- | --- | --- | --- |
-| Next.js | Alpha | `state-management`, `data-fetching`, `forms`, `validation`, `icons` | Zustand, TanStack Query, React Hook Form, Zod, Lucide React |
-| Django | Alpha | `api`, `rest-api` | Django REST Framework |
+| Next.js | Alpha | `state-management`, `data-fetching`, `forms`, `validation`, `icons`, `auth`, `monitoring` | Zustand, TanStack Query, React Hook Form, Zod, Lucide React, Auth.js, Sentry |
+| Django | Alpha | `api`, `rest-api`, `security`, `background-jobs`, `caching`, `email`, `storage`, `api-documentation`, `monitoring` | Django REST Framework, django-cors-headers, Celery, django-redis, django-anymail, django-storages, drf-spectacular, Sentry |
 | Laravel | Alpha | `auth`, `authentication`, `api-auth` | Laravel Sanctum |
 | Flutter | Alpha | `state-management`, `state`, `stores` | Flutter Riverpod |
 | Rust | Alpha | `observability`, `logging`, `tracing` | Rust tracing |
 
-## Current Integrations
+## Current Integration Highlights
 
 - `zustand`
 - `redux-toolkit`
 - `tanstack-query`
 - `zod`
 - `react-hook-form`
+- `next-auth`
+- `sentry-nextjs`
 - `django-rest-framework`
+- `django-cors-headers`
+- `celery`
+- `django-redis`
+- `django-storages`
+- `django-anymail`
+- `drf-spectacular`
+- `sentry-python`
 - `laravel-sanctum`
 - `flutter-riverpod`
 - `rust-tracing`
@@ -195,6 +220,14 @@ existing project
 Before Avis changes a project, integrations generate a ChangePlan. Avis validates the plan and displays the dependency, file, configuration, or environment operations before asking for confirmation.
 
 For example, `avis add icons` in a compatible Next.js project recommends Lucide React and shows React Icons and Heroicons as alternatives. The public workflow stays capability-first while integration pages document the concrete tool Avis selects.
+
+Avis V3.1 also distinguishes setup depth:
+
+- `install`: Avis installs a compatible package.
+- `configure`: Avis installs and creates useful starter configuration.
+- `managed`: Avis can install, configure, verify, diagnose drift, and produce supported repair plans.
+
+`avis repair` is intentionally conservative. It requires explicit repair-plan support and checks Avis' recorded file hashes before mutating previously managed files. If a file has changed outside Avis, repair stops and asks for manual review instead of guessing.
 
 ## Avis Doctor
 

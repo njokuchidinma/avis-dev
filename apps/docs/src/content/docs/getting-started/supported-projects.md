@@ -5,6 +5,12 @@ description: Frameworks, ecosystems, and integrations currently supported by Avi
 
 Avis should only document support that exists in the current implementation.
 
+Avis V3.1 uses three support depths:
+
+- `install`: Avis installs a compatible dependency.
+- `configure`: Avis installs the dependency and adds useful starter files, configuration, or environment examples.
+- `managed`: Avis can verify setup health and generate supported repair plans with additional safety checks.
+
 ## Next.js
 
 Status: alpha
