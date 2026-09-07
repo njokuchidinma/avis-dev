@@ -4,6 +4,12 @@ on:
   push:
     tags:
       - "v*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Package version to publish, for example 0.1.0-alpha.2"
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -35,14 +41,20 @@ jobs:
         id: package
         env:
           RELEASE_TAG: ${{ github.ref_name }}
+          RELEASE_VERSION_INPUT: ${{ inputs.version || '' }}
         run: |
           set -euo pipefail
 
           package_version="$(node -e "const fs = require('node:fs'); process.stdout.write(JSON.parse(fs.readFileSync('package.json', 'utf8')).version)")"
           expected_tag="v${package_version}"
+          release_tag="${RELEASE_TAG}"
 
-          if [ "${RELEASE_TAG}" != "${expected_tag}" ]; then
-            echo "Release tag ${RELEASE_TAG} does not match package version ${package_version}. Expected ${expected_tag}."
+          if [ -n "${RELEASE_VERSION_INPUT}" ]; then
+            release_tag="v${RELEASE_VERSION_INPUT}"
+          fi
+
+          if [ "${release_tag}" != "${expected_tag}" ]; then
+            echo "Release tag ${release_tag} does not match package version ${package_version}. Expected ${expected_tag}."
             exit 1
           fi
 

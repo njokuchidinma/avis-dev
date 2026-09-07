@@ -31,6 +31,12 @@ The workflow validates the tag, runs `pnpm release:check`, publishes the
 package, updates `latest`, and verifies the published npm tags. Stable tags
 such as `v0.1.0` publish to `latest` as well.
 
+If a tag event fails before publishing because repository Actions, secrets, or
+trusted publishing were not ready yet, use the manual workflow dispatch after
+the release workflow exists on the default branch. Pass the package version
+without the leading `v`, for example `0.1.0-alpha.2`. The workflow still checks
+that the requested version matches the root `package.json`.
+
 Configure npm Trusted Publishing for the `njokuchidinma/avis-dev` repository
 and the `npm-publish.yml` workflow. The workflow uses its OIDC identity for
 `npm publish`, so no publish token is exposed to package lifecycle scripts.
