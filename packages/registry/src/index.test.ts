@@ -1,6 +1,21 @@
 import { describe, expect, it } from "vitest";
 import type { AvisIntegration, ProjectContext } from "@avis/core";
 import {
+  builtInCapabilities,
+  builtInIntegrations,
+  detectableDartFrameworkIds,
+  detectableGoFrameworkIds,
+  detectableNodeFrameworkIds,
+  detectablePhpFrameworkIds,
+  detectablePythonFrameworkIds,
+  detectableRustFrameworkIds,
+  ecosystems,
+  frameworkDefinitions,
+  frameworks,
+  packageManagers,
+  projectTypes
+} from "@avis/core";
+import {
   IntegrationRegistry,
   validateIntegrationManifest,
   validateRegistryCatalog,
@@ -432,8 +447,144 @@ describe("manifest validation", () => {
       }).errors
     ).toEqual([
       "Integration next-auth is managed but does not expose a verifier.",
-      "Integration next-auth is managed but does not declare repair plan support."
+      "Integration next-auth is managed but does not declare repair plan support.",
+      "Integration next-auth is managed but does not declare non-dependency configuration behavior."
     ]);
+  });
+
+  it("validates the built-in release catalog contract", () => {
+    const result = validateRegistryCatalog({
+      capabilities: builtInCapabilities,
+      integrations: builtInIntegrations,
+      knownEcosystemIds: Object.values(ecosystems),
+      knownFrameworkIds: Object.values(frameworks),
+      knownPackageManagerIds: Object.values(packageManagers),
+      knownProjectTypeIds: Object.values(projectTypes),
+      detectableFrameworkIds: [
+        ...detectableNodeFrameworkIds,
+        ...detectablePythonFrameworkIds,
+        ...detectablePhpFrameworkIds,
+        ...detectableDartFrameworkIds,
+        ...detectableRustFrameworkIds,
+        ...detectableGoFrameworkIds
+      ],
+      frameworkDefinitions,
+      managedIntegrationFixtureIds: [
+        "django-rest-framework",
+        "django-cors-headers"
+      ]
+    });
+
+    expect(result).toEqual({
+      valid: true,
+      errors: []
+    });
+  });
+
+  it("rejects invalid framework definitions and missing managed fixture coverage", () => {
+    expect(
+      validateRegistryCatalog({
+        capabilities: [
+          {
+            id: "auth",
+            name: "Authentication",
+            defaultFrameworkIntegrations: {
+              nextjs: "python-auth"
+            },
+            defaultProjectTypeIntegrations: {
+              kiosk: "python-auth"
+            }
+          }
+        ],
+        integrations: [
+          {
+            manifest: {
+              id: "python-auth",
+              name: "Python Auth",
+              description: "Python auth.",
+              capability: "auth",
+              version: "1.0.0",
+              status: "stable",
+              trust: "official",
+              setupMaturity: "managed",
+              repair: "plan",
+              supports: {
+                ecosystems: ["python"]
+              },
+              configures: ["runtime dependency", "auth settings"]
+            },
+            isCompatible: () => ({ supported: true }),
+            plan: unusedPlan,
+            verify: async () => ({
+              integrationId: "python-auth",
+              health: "healthy",
+              checks: [],
+              diagnostics: []
+            })
+          }
+        ],
+        knownEcosystemIds: ["node", "python"],
+        knownFrameworkIds: ["nextjs", "fastify"],
+        knownProjectTypeIds: ["backend"],
+        detectableFrameworkIds: ["fastify"],
+        frameworkDefinitions: [
+          {
+            id: "nextjs",
+            name: "Next.js",
+            ecosystem: "node",
+            supportTier: "tier-1",
+            defaultProjectType: "kiosk",
+            relevantCapabilities: ["missing-capability"]
+          }
+        ],
+        managedIntegrationFixtureIds: []
+      }).errors
+    ).toEqual([
+      "Framework nextjs references unknown project type kiosk.",
+      "Framework nextjs references unknown capability missing-capability.",
+      "Capability auth defaults to python-auth for framework nextjs, but that integration does not support node.",
+      "Capability auth has unknown default project type kiosk.",
+      "Integration python-auth is managed but is missing release fixture coverage.",
+      "Detectable framework fastify is missing from the framework catalog."
+    ]);
+  });
+
+  it("keeps built-in framework recommendations ahead of ecosystem defaults", () => {
+    const registry = new IntegrationRegistry({
+      capabilities: builtInCapabilities,
+      integrations: builtInIntegrations
+    });
+
+    expect(
+      registry.recommendIntegrationsForCapability("auth", builtInNextContext)[0]
+        ?.integration.manifest.id
+    ).toBe("next-auth");
+    expect(
+      registry.recommendIntegrationsForCapability("auth", builtInDjangoContext)[0]
+        ?.integration.manifest.id
+    ).toBe("django-simple-jwt");
+    expect(
+      registry.recommendIntegrationsForCapability("auth", builtInLaravelContext)[0]
+        ?.integration.manifest.id
+    ).toBe("laravel-sanctum");
+    expect(
+      registry.recommendIntegrationsForCapability(
+        "api-documentation",
+        builtInDjangoContext
+      )[0]?.integration.manifest.id
+    ).toBe("drf-spectacular");
+    expect(
+      registry.recommendIntegrationsForCapability(
+        "api-documentation",
+        builtInExpressContext
+      )[0]?.integration.manifest.id
+    ).toBe("swagger-ui-express");
+    expect(
+      registry.findNativeCapabilitySupport(
+        "api-documentation",
+        builtInFastApiContext
+      )?.description
+    ).toContain("FastAPI exposes OpenAPI");
   });
 
   it("validates stack manifests", () => {
@@ -604,3 +755,63 @@ const nextAuthRegistryIntegration: AvisIntegration = {
   isCompatible: nextCompatibleIntegration,
   plan: unusedPlan
 };
+
+const builtInNextContext: ProjectContext = createBuiltInContext(
+  ecosystems.node,
+  frameworks.nextjs,
+  packageManagers.pnpm,
+  projectTypes.fullstack
+);
+
+const builtInExpressContext: ProjectContext = createBuiltInContext(
+  ecosystems.node,
+  frameworks.express,
+  packageManagers.pnpm,
+  projectTypes.backend
+);
+
+const builtInDjangoContext: ProjectContext = createBuiltInContext(
+  ecosystems.python,
+  frameworks.django,
+  packageManagers.uv,
+  projectTypes.backend
+);
+
+const builtInFastApiContext: ProjectContext = createBuiltInContext(
+  ecosystems.python,
+  frameworks.fastapi,
+  packageManagers.uv,
+  projectTypes.backend
+);
+
+const builtInLaravelContext: ProjectContext = createBuiltInContext(
+  ecosystems.php,
+  frameworks.laravel,
+  packageManagers.composer,
+  projectTypes.backend
+);
+
+function createBuiltInContext(
+  ecosystem: ProjectContext["ecosystem"],
+  frameworkId: NonNullable<ProjectContext["framework"]>["id"],
+  packageManagerId: NonNullable<ProjectContext["packageManager"]>["id"],
+  projectTypeId: NonNullable<ProjectContext["projectType"]>["id"]
+): ProjectContext {
+  const framework = { id: frameworkId, confidence: "high" as const };
+  const packageManager = { id: packageManagerId, confidence: "high" as const };
+  const projectType = { id: projectTypeId, confidence: "high" as const };
+
+  return {
+    workspaceRoot: "/project",
+    targetRoot: "/project",
+    targetId: "project",
+    ecosystem,
+    languages: [],
+    framework,
+    frameworks: [framework],
+    packageManager,
+    packageManagers: [packageManager],
+    projectType,
+    projectTypes: [projectType]
+  };
+}

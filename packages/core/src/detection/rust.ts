@@ -15,6 +15,11 @@ import {
   projectTypes
 } from "../types/ids.js";
 
+export const detectableRustFrameworkIds: readonly FrameworkMatch["id"][] = [
+  frameworks.axum,
+  frameworks.actixWeb
+];
+
 export async function detectRustProject(root: string): Promise<DetectionResult> {
   const cargoTomlPath = path.join(root, "Cargo.toml");
   const cargoToml = await readOptionalFile(cargoTomlPath);

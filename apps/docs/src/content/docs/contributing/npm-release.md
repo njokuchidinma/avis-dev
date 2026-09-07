@@ -73,6 +73,14 @@ The smoke test verifies:
 - `avis stack list`
 - `avis integration list`
 
+The test suite also validates the release catalog contract:
+
+- every detectable framework is present in the framework catalog
+- framework definitions reference known ecosystems, project types, and capabilities
+- capability defaults reference known compatible integrations
+- framework-specific recommendations take precedence over ecosystem defaults
+- `managed` integrations expose verification, repair-plan support, non-dependency configuration behavior, and release fixture coverage
+
 The package also has publish guards:
 
 - `prepack` builds the bundled CLI in `dist`.

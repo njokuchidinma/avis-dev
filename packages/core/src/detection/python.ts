@@ -21,6 +21,12 @@ interface PythonProjectFiles {
   managePy?: string;
 }
 
+export const detectablePythonFrameworkIds: readonly FrameworkMatch["id"][] = [
+  frameworks.django,
+  frameworks.fastapi,
+  frameworks.flask
+];
+
 export async function detectPythonProject(root: string): Promise<DetectionResult> {
   const files = await readPythonProjectFiles(root);
   const hasPythonProject =

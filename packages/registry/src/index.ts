@@ -4,6 +4,7 @@ import type {
   Capability,
   CapabilityId,
   EcosystemId,
+  FrameworkDefinition,
   FrameworkId,
   ProjectContext
 } from "@avis/core";
@@ -55,7 +56,10 @@ export interface RegistryCatalogValidationOptions {
   knownEcosystemIds?: readonly string[];
   knownFrameworkIds?: readonly string[];
   knownPackageManagerIds?: readonly string[];
+  knownProjectTypeIds?: readonly string[];
   detectableFrameworkIds?: readonly string[];
+  frameworkDefinitions?: readonly FrameworkDefinition[];
+  managedIntegrationFixtureIds?: readonly string[];
 }
 
 export class IntegrationRegistry {
@@ -634,6 +638,53 @@ export function validateRegistryCatalog(
   const knownPackageManagerIds = options.knownPackageManagerIds
     ? new Set(options.knownPackageManagerIds)
     : undefined;
+  const knownProjectTypeIds = options.knownProjectTypeIds
+    ? new Set(options.knownProjectTypeIds)
+    : undefined;
+  const frameworkDefinitionsById = options.frameworkDefinitions
+    ? new Map(options.frameworkDefinitions.map((framework) => [framework.id, framework]))
+    : undefined;
+  const managedIntegrationFixtureIds = options.managedIntegrationFixtureIds
+    ? new Set(options.managedIntegrationFixtureIds)
+    : undefined;
+
+  if (options.frameworkDefinitions) {
+    const seenFrameworkIds = new Set<string>();
+
+    for (const framework of options.frameworkDefinitions) {
+      if (seenFrameworkIds.has(framework.id)) {
+        errors.push(`Framework catalog contains duplicate framework ${framework.id}.`);
+      }
+      seenFrameworkIds.add(framework.id);
+
+      if (knownFrameworkIds && !knownFrameworkIds.has(framework.id)) {
+        errors.push(`Framework catalog defines unknown framework ${framework.id}.`);
+      }
+
+      if (knownEcosystemIds && !knownEcosystemIds.has(framework.ecosystem)) {
+        errors.push(
+          `Framework ${framework.id} references unknown ecosystem ${framework.ecosystem}.`
+        );
+      }
+
+      if (
+        knownProjectTypeIds &&
+        !knownProjectTypeIds.has(framework.defaultProjectType)
+      ) {
+        errors.push(
+          `Framework ${framework.id} references unknown project type ${framework.defaultProjectType}.`
+        );
+      }
+
+      for (const capabilityId of framework.relevantCapabilities) {
+        if (!capabilityIds.has(capabilityId)) {
+          errors.push(
+            `Framework ${framework.id} references unknown capability ${capabilityId}.`
+          );
+        }
+      }
+    }
+  }
 
   for (const capability of options.capabilities) {
     for (const [ecosystem, integrationId] of Object.entries(capability.defaultIntegrations ?? {})) {
@@ -703,11 +754,25 @@ export function validateRegistryCatalog(
           `Capability ${capability.id} defaults to ${integrationId}, but it does not support framework ${framework}.`
         );
       }
+
+      const frameworkDefinition = frameworkDefinitionsById?.get(framework);
+      if (
+        frameworkDefinition &&
+        !integration.manifest.supports.ecosystems.includes(frameworkDefinition.ecosystem)
+      ) {
+        errors.push(
+          `Capability ${capability.id} defaults to ${integrationId} for framework ${framework}, but that integration does not support ${frameworkDefinition.ecosystem}.`
+        );
+      }
     }
 
     for (const [projectType, integrationId] of Object.entries(
       capability.defaultProjectTypeIntegrations ?? {}
     )) {
+      if (knownProjectTypeIds && !knownProjectTypeIds.has(projectType)) {
+        errors.push(`Capability ${capability.id} has unknown default project type ${projectType}.`);
+      }
+
       if (!integrationId) {
         continue;
       }
@@ -764,6 +829,25 @@ export function validateRegistryCatalog(
           `Integration ${integration.manifest.id} is managed but does not declare repair plan support.`
         );
       }
+
+      if (
+        !integration.manifest.configures?.some(
+          (configuredItem) => configuredItem !== "runtime dependency"
+        )
+      ) {
+        errors.push(
+          `Integration ${integration.manifest.id} is managed but does not declare non-dependency configuration behavior.`
+        );
+      }
+
+      if (
+        managedIntegrationFixtureIds &&
+        !managedIntegrationFixtureIds.has(integration.manifest.id)
+      ) {
+        errors.push(
+          `Integration ${integration.manifest.id} is managed but is missing release fixture coverage.`
+        );
+      }
     }
 
     if (knownEcosystemIds) {
@@ -800,6 +884,10 @@ export function validateRegistryCatalog(
   if (options.detectableFrameworkIds && knownFrameworkIds) {
     for (const framework of options.detectableFrameworkIds) {
       if (!knownFrameworkIds.has(framework)) {
+        errors.push(`Detectable framework ${framework} is missing from the framework catalog.`);
+      }
+
+      if (frameworkDefinitionsById && !frameworkDefinitionsById.has(framework)) {
         errors.push(`Detectable framework ${framework} is missing from the framework catalog.`);
       }
     }

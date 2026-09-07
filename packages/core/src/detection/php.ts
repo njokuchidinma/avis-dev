@@ -21,6 +21,11 @@ interface ComposerJson {
   "require-dev"?: Record<string, string>;
 }
 
+export const detectablePhpFrameworkIds: readonly FrameworkMatch["id"][] = [
+  frameworks.laravel,
+  frameworks.symfony
+];
+
 export async function detectPhpProject(root: string): Promise<DetectionResult> {
   const composerJsonPath = path.join(root, "composer.json");
   const composerJson = await readOptionalComposerJson(composerJsonPath);

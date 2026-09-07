@@ -15,6 +15,10 @@ import {
   projectTypes
 } from "../types/ids.js";
 
+export const detectableDartFrameworkIds: readonly FrameworkMatch["id"][] = [
+  frameworks.flutter
+];
+
 export async function detectDartProject(root: string): Promise<DetectionResult> {
   const pubspecPath = path.join(root, "pubspec.yaml");
   const pubspec = await readOptionalFile(pubspecPath);

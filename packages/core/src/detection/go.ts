@@ -16,6 +16,12 @@ import {
 } from "../types/ids.js";
 import type { FrameworkId } from "../types/ids.js";
 
+export const detectableGoFrameworkIds: readonly FrameworkId[] = [
+  frameworks.gin,
+  frameworks.fiber,
+  frameworks.echo
+];
+
 export async function detectGoProject(root: string): Promise<DetectionResult> {
   const goModPath = path.join(root, "go.mod");
   const goMod = await readOptionalFile(goModPath);
