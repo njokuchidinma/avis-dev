@@ -19,6 +19,8 @@ The manifest should include:
 - capability ID
 - version
 - status
+- trust
+- setup maturity
 - supported ecosystems
 - supported frameworks
 - supported package managers

@@ -1,6 +1,7 @@
 import { packageManagers } from "../types/ids.js";
 import type { PackageManagerId } from "../types/ids.js";
 import { createDartPackageManagerAdapter } from "./dart.js";
+import { createGoPackageManagerAdapter } from "./go.js";
 import { createNodePackageManagerAdapter } from "./node.js";
 import { createPhpPackageManagerAdapter } from "./php.js";
 import { createPythonPackageManagerAdapter } from "./python.js";
@@ -30,6 +31,9 @@ export function createPackageManagerAdapter(
 
     case packageManagers.cargo:
       return createRustPackageManagerAdapter(id);
+
+    case packageManagers.go:
+      return createGoPackageManagerAdapter(id);
 
     default:
       throw new Error(`Unsupported package manager: ${id}`);

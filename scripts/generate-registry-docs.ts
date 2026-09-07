@@ -18,15 +18,15 @@ This page is generated from Avis capability and integration manifests.
 
 ## Capabilities
 
-| Capability | Description | Aliases | Defaults | Exclusive |
-| --- | --- | --- | --- | --- |
-${builtInCapabilities.map((capability) => `| \`${capability.id}\` | ${escapeMarkdownTable(capability.description ?? "")} | ${formatList(capability.aliases)} | ${formatDefaults(capability.defaultIntegrations)} | ${capability.exclusive ? "yes" : "no"} |`).join("\n")}
+| Capability | Description | Aliases | Ecosystem Defaults | Framework Defaults | Project Type Defaults | Native Framework Support | Exclusive |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+${builtInCapabilities.map((capability) => `| \`${capability.id}\` | ${escapeMarkdownTable(capability.description ?? "")} | ${formatList(capability.aliases)} | ${formatDefaults(capability.defaultIntegrations)} | ${formatDefaults(capability.defaultFrameworkIntegrations)} | ${formatDefaults(capability.defaultProjectTypeIntegrations)} | ${formatDefaults(capability.nativeFrameworkSupport)} | ${capability.exclusive ? "yes" : "no"} |`).join("\n")}
 
 ## Integrations
 
-| Integration | Capability | Status | Trust | Ecosystems | Frameworks | Package Managers |
-| --- | --- | --- | --- | --- | --- | --- |
-${builtInIntegrations.map((integration) => `| \`${integration.manifest.id}\` | \`${integration.manifest.capability}\` | ${integration.manifest.status} | ${integration.manifest.trust} | ${formatList(integration.manifest.supports.ecosystems)} | ${formatList(integration.manifest.supports.frameworks)} | ${formatList(integration.manifest.supports.packageManagers)} |`).join("\n")}
+| Integration | Capability | Status | Trust | Setup Maturity | Ecosystems | Frameworks | Package Managers |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+${builtInIntegrations.map((integration) => `| \`${integration.manifest.id}\` | \`${integration.manifest.capability}\` | ${integration.manifest.status} | ${integration.manifest.trust} | ${integration.manifest.setupMaturity} | ${formatList(integration.manifest.supports.ecosystems)} | ${formatList(integration.manifest.supports.frameworks)} | ${formatList(integration.manifest.supports.packageManagers)} |`).join("\n")}
 `;
 
 await mkdir(path.dirname(outputPath), { recursive: true });

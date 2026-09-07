@@ -4,15 +4,27 @@ import type {
   DetectionEvidence,
   DetectionResult,
   FrameworkMatch,
-  PackageManagerMatch
+  PackageManagerMatch,
+  ProjectTypeMatch
 } from "./types.js";
-import { ecosystems, frameworks, languages, packageManagers } from "../types/ids.js";
+import {
+  ecosystems,
+  frameworks,
+  languages,
+  packageManagers,
+  projectTypes
+} from "../types/ids.js";
 
 interface ComposerJson {
   name?: string;
   require?: Record<string, string>;
   "require-dev"?: Record<string, string>;
 }
+
+export const detectablePhpFrameworkIds: readonly FrameworkMatch["id"][] = [
+  frameworks.laravel,
+  frameworks.symfony
+];
 
 export async function detectPhpProject(root: string): Promise<DetectionResult> {
   const composerJsonPath = path.join(root, "composer.json");
@@ -50,6 +62,7 @@ export async function detectPhpProject(root: string): Promise<DetectionResult> {
       ];
   const packageManagerMatches = await detectPhpPackageManagers(root, composerJson);
   const frameworkMatches = detectPhpFrameworks(composerJson, artisanExists);
+  const projectTypeMatches = detectPhpProjectTypes(frameworkMatches);
 
   return {
     root,
@@ -65,13 +78,15 @@ export async function detectPhpProject(root: string): Promise<DetectionResult> {
         },
         languages: [languages.php],
         frameworks: frameworkMatches,
-        packageManagers: packageManagerMatches
+        packageManagers: packageManagerMatches,
+        projectTypes: projectTypeMatches
       }
     ],
     evidence: [
       ...projectEvidence,
       ...packageManagerMatches.flatMap((match) => match.evidence),
-      ...frameworkMatches.flatMap((match) => match.evidence)
+      ...frameworkMatches.flatMap((match) => match.evidence),
+      ...projectTypeMatches.flatMap((match) => match.evidence)
     ],
     diagnostics: []
   };
@@ -113,10 +128,12 @@ export function detectPhpFrameworks(
     ...composerJson?.["require-dev"]
   };
   const laravelVersion = dependencies["laravel/framework"];
-  const evidence: DetectionEvidence[] = [];
+  const symfonyVersion = dependencies["symfony/framework-bundle"];
+  const matches: FrameworkMatch[] = [];
+  const laravelEvidence: DetectionEvidence[] = [];
 
   if (laravelVersion) {
-    evidence.push({
+    laravelEvidence.push({
       kind: "manifest",
       path: "composer.json",
       description: "Found Laravel framework dependency."
@@ -124,23 +141,54 @@ export function detectPhpFrameworks(
   }
 
   if (artisanExists) {
-    evidence.push({
+    laravelEvidence.push({
       kind: "file",
       path: "artisan",
       description: "Found Laravel artisan entry point."
     });
   }
 
-  if (evidence.length === 0) {
+  if (laravelEvidence.length > 0) {
+    matches.push({
+      id: frameworks.laravel,
+      version: laravelVersion,
+      confidence: laravelVersion || artisanExists ? "high" : "medium",
+      evidence: laravelEvidence
+    });
+  }
+
+  if (symfonyVersion) {
+    matches.push({
+      id: frameworks.symfony,
+      version: symfonyVersion,
+      confidence: "high",
+      evidence: [
+        {
+          kind: "manifest",
+          path: "composer.json",
+          description: "Found Symfony framework bundle dependency."
+        }
+      ]
+    });
+  }
+
+  return matches;
+}
+
+export function detectPhpProjectTypes(
+  frameworkMatches: FrameworkMatch[]
+): ProjectTypeMatch[] {
+  if (frameworkMatches.length === 0) {
     return [];
   }
 
   return [
     {
-      id: frameworks.laravel,
-      version: laravelVersion,
-      confidence: laravelVersion || artisanExists ? "high" : "medium",
-      evidence
+      id: projectTypes.backend,
+      confidence: frameworkMatches.some((match) => match.confidence === "high")
+        ? "high"
+        : "medium",
+      evidence: frameworkMatches.flatMap((match) => match.evidence)
     }
   ];
 }

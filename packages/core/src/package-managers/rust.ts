@@ -7,6 +7,7 @@ import type { PackageManagerId } from "../types/ids.js";
 import type { ProjectContext } from "../types/project-context.js";
 import type {
   DependencyInstallRequest,
+  DependencyRemoveRequest,
   PackageManagerAdapter,
   PackageManagerCommand
 } from "./types.js";
@@ -40,6 +41,14 @@ export function createRustPackageManagerAdapter(
         ...(request.dependencyType === "optional" ? ["--optional"] : []),
         ...request.packages.map(formatDependencySpec)
       ],
+      cwd: context.targetRoot
+    }),
+    buildRemoveCommand: (
+      context: ProjectContext,
+      request: DependencyRemoveRequest
+    ): PackageManagerCommand => ({
+      command: "cargo",
+      args: ["remove", ...request.packages],
       cwd: context.targetRoot
     })
   };

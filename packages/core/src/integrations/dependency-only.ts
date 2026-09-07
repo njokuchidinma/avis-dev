@@ -1,4 +1,5 @@
 import type { ChangePlan } from "../planning/change-plan.js";
+import type { DependencyType } from "../planning/operations.js";
 import { createPackageManagerAdapter } from "../package-managers/factory.js";
 import type { PackageManagerAdapter } from "../package-managers/types.js";
 import type { ProjectContext } from "../types/project-context.js";
@@ -6,24 +7,32 @@ import type { VerificationResult } from "../verification/types.js";
 import type {
   AvisIntegration,
   AvisIntegrationManifest,
+  IntegrationSetupMaturity,
   CompatibilityResult
 } from "./types.js";
 
 export interface DependencyOnlyIntegrationOptions {
-  manifest: AvisIntegrationManifest;
+  manifest: Omit<AvisIntegrationManifest, "setupMaturity"> &
+    Partial<Pick<AvisIntegrationManifest, "setupMaturity">>;
   packageName?: string;
   packageNames?: string[];
   planTitle: string;
   dependencyOperationId: string;
   dependencyDescription: string;
+  dependencyType?: DependencyType;
   compatibilityDescription: string;
 }
 
 export function createDependencyOnlyIntegration(
   options: DependencyOnlyIntegrationOptions
 ): AvisIntegration {
+  const manifest: AvisIntegrationManifest = {
+    setupMaturity: "install" satisfies IntegrationSetupMaturity,
+    ...options.manifest
+  };
+
   return {
-    manifest: options.manifest,
+    manifest,
     isCompatible: (context) => isCompatible(context, options),
     plan: async ({ context }): Promise<ChangePlan> => {
       const compatibility = isCompatible(context, options);
@@ -44,9 +53,9 @@ export function createDependencyOnlyIntegration(
       );
 
       return {
-        id: options.manifest.id,
+        id: manifest.id,
         title: options.planTitle,
-        integrationId: options.manifest.id,
+        integrationId: manifest.id,
         target: context,
         operations: missingPackageNames.length === 0
           ? []
@@ -55,7 +64,7 @@ export function createDependencyOnlyIntegration(
                 id: options.dependencyOperationId,
                 type: "dependency.add",
                 description: options.dependencyDescription,
-                dependencyType: "runtime",
+                dependencyType: options.dependencyType ?? "runtime",
                 packageManager: packageManagerId,
                 packages: missingPackageNames.map((name) => ({ name }))
               }

@@ -1,5 +1,6 @@
 export * from "./dart.js";
 export * from "./factory.js";
+export * from "./go.js";
 export * from "./node.js";
 export * from "./php.js";
 export * from "./python.js";

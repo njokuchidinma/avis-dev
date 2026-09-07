@@ -1,18 +1,10 @@
 import type { DetectionResult } from "./types.js";
-import { detectDartProject } from "./dart.js";
-import { detectNodeProject } from "./node.js";
-import { detectPhpProject } from "./php.js";
-import { detectPythonProject } from "./python.js";
-import { detectRustProject } from "./rust.js";
+import { ecosystemAdapters } from "../ecosystems/catalog.js";
 
 export async function detectProject(root: string): Promise<DetectionResult> {
-  const results = await Promise.all([
-    detectNodeProject(root),
-    detectPythonProject(root),
-    detectPhpProject(root),
-    detectDartProject(root),
-    detectRustProject(root)
-  ]);
+  const results = await Promise.all(
+    ecosystemAdapters.map((adapter) => adapter.detect(root))
+  );
 
   for (const result of results) {
     if (result.targets.length > 0) {

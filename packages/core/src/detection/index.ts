@@ -1,5 +1,6 @@
 export * from "./context.js";
 export * from "./dart.js";
+export * from "./go.js";
 export * from "./node.js";
 export * from "./php.js";
 export * from "./project.js";

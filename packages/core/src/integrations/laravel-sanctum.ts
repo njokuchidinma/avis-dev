@@ -17,6 +17,7 @@ export const laravelSanctumIntegration: AvisIntegration = {
     version: "1.0.0",
     status: "stable",
     trust: "official",
+    setupMaturity: "install",
     supports: {
       ecosystems: [ecosystems.php],
       frameworks: [frameworks.laravel],

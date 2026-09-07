@@ -3,7 +3,8 @@ import type {
   EcosystemId,
   FrameworkId,
   LanguageId,
-  PackageManagerId
+  PackageManagerId,
+  ProjectTypeId
 } from "../types/ids.js";
 
 export type DetectionEvidenceKind =
@@ -12,7 +13,8 @@ export type DetectionEvidenceKind =
   | "package-json"
   | "lockfile"
   | "config"
-  | "manifest";
+  | "manifest"
+  | "source";
 
 export interface DetectionEvidence {
   kind: DetectionEvidenceKind;
@@ -40,6 +42,12 @@ export interface PackageManagerMatch {
   evidence: DetectionEvidence[];
 }
 
+export interface ProjectTypeMatch {
+  id: ProjectTypeId;
+  confidence: Confidence;
+  evidence: DetectionEvidence[];
+}
+
 export interface ProjectTarget {
   id: string;
   root: string;
@@ -48,6 +56,7 @@ export interface ProjectTarget {
   languages: LanguageId[];
   frameworks: FrameworkMatch[];
   packageManagers: PackageManagerMatch[];
+  projectTypes: ProjectTypeMatch[];
 }
 
 export interface DetectionResult {

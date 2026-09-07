@@ -1,10 +1,12 @@
-import { access, readdir, readFile } from "node:fs/promises";
-import path from "node:path";
 import type { ChangePlan } from "../planning/change-plan.js";
 import { createPythonPackageManagerAdapter } from "../package-managers/python.js";
 import { ecosystems, frameworks, packageManagers } from "../types/ids.js";
 import type { ProjectContext } from "../types/project-context.js";
 import type { VerificationResult } from "../verification/types.js";
+import {
+  djangoSettingsIncludesValue,
+  findDjangoSettingsPath
+} from "./django-settings.js";
 import type { AvisIntegration, CompatibilityResult } from "./types.js";
 
 const packageName = "djangorestframework";
@@ -19,6 +21,7 @@ export const djangoRestFrameworkIntegration: AvisIntegration = {
     version: "1.0.0",
     status: "stable",
     trust: "official",
+    setupMaturity: "managed",
     supports: {
       ecosystems: [ecosystems.python],
       frameworks: [frameworks.django],
@@ -26,6 +29,7 @@ export const djangoRestFrameworkIntegration: AvisIntegration = {
     },
     dependencies: [{ name: packageName, type: "runtime" }],
     configures: ["runtime dependency", "rest_framework installed app"],
+    repair: "plan",
     source: { owner: "avis" }
   },
   isCompatible: isDjangoRestFrameworkCompatible,
@@ -43,7 +47,7 @@ export const djangoRestFrameworkIntegration: AvisIntegration = {
     );
     const settingsPath = await findDjangoSettingsPath(context.targetRoot);
     const settingsConfigured = settingsPath
-      ? await djangoSettingsIncludesApp(context.targetRoot, settingsPath, settingsApp)
+      ? await djangoSettingsIncludesValue(context.targetRoot, settingsPath, settingsApp)
       : false;
 
     return {
@@ -143,7 +147,7 @@ async function verifyDjangoRestFramework(
   );
   const settingsPath = await findDjangoSettingsPath(context.targetRoot);
   const settingsConfigured = settingsPath
-    ? await djangoSettingsIncludesApp(context.targetRoot, settingsPath, settingsApp)
+    ? await djangoSettingsIncludesValue(context.targetRoot, settingsPath, settingsApp)
     : false;
   const checks = [
     {
@@ -177,75 +181,4 @@ async function verifyDjangoRestFramework(
     checks: [...checks],
     diagnostics: []
   };
-}
-
-async function findDjangoSettingsPath(root: string): Promise<string | undefined> {
-  const managePy = await readOptionalFile(path.join(root, "manage.py"));
-  const moduleMatch = managePy?.match(/DJANGO_SETTINGS_MODULE["'],\s*["']([^"']+)/);
-  const settingsModule = moduleMatch?.[1];
-
-  if (settingsModule) {
-    const candidate = `${settingsModule.replaceAll(".", "/")}.py`;
-    if (await pathExists(path.join(root, candidate))) {
-      return candidate;
-    }
-  }
-
-  return findSettingsFile(root);
-}
-
-async function findSettingsFile(root: string): Promise<string | undefined> {
-  const entries = await readdir(root, { withFileTypes: true });
-
-  for (const entry of entries) {
-    if (!entry.isDirectory() || entry.name.startsWith(".")) {
-      continue;
-    }
-
-    const candidate = path.join(root, entry.name, "settings.py");
-    if (await pathExists(candidate)) {
-      return `${entry.name}/settings.py`;
-    }
-  }
-
-  return undefined;
-}
-
-async function djangoSettingsIncludesApp(
-  root: string,
-  relativeSettingsPath: string,
-  appName: string
-): Promise<boolean> {
-  const contents = await readFile(path.join(root, relativeSettingsPath), "utf8");
-  return contents.includes(`"${appName}"`) || contents.includes(`'${appName}'`);
-}
-
-async function readOptionalFile(filePath: string): Promise<string | undefined> {
-  try {
-    return await readFile(filePath, "utf8");
-  } catch (error) {
-    if (isFileNotFoundError(error)) {
-      return undefined;
-    }
-
-    throw error;
-  }
-}
-
-async function pathExists(filePath: string): Promise<boolean> {
-  try {
-    await access(filePath);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-function isFileNotFoundError(error: unknown): boolean {
-  return (
-    typeof error === "object" &&
-    error !== null &&
-    "code" in error &&
-    error.code === "ENOENT"
-  );
 }

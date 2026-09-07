@@ -15,6 +15,7 @@ export const reduxToolkitIntegration = createDependencyOnlyIntegration({
     version: "1.0.0",
     status: "stable",
     trust: "official",
+    setupMaturity: "configure",
     supports: {
       ecosystems: [ecosystems.node],
       frameworks: [frameworks.nextjs],

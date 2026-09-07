@@ -8,6 +8,10 @@ export interface DependencyInstallRequest {
   dependencyType: DependencyType;
 }
 
+export interface DependencyRemoveRequest {
+  packages: string[];
+}
+
 export interface PackageManagerCommand {
   command: string;
   args: string[];
@@ -25,5 +29,9 @@ export interface PackageManagerAdapter {
   buildAddCommand(
     context: ProjectContext,
     request: DependencyInstallRequest
+  ): PackageManagerCommand;
+  buildRemoveCommand?(
+    context: ProjectContext,
+    request: DependencyRemoveRequest
   ): PackageManagerCommand;
 }

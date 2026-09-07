@@ -4,7 +4,8 @@ import type {
   EcosystemId,
   FrameworkId,
   IntegrationId,
-  PackageManagerId
+  PackageManagerId,
+  ProjectTypeId
 } from "../types/ids.js";
 import type { ProjectContext } from "../types/project-context.js";
 import type { VerificationResult } from "../verification/types.js";
@@ -15,12 +16,16 @@ export interface Capability {
   description?: string;
   aliases?: string[];
   defaultIntegrations?: Partial<Record<EcosystemId, IntegrationId>>;
+  defaultFrameworkIntegrations?: Partial<Record<FrameworkId, IntegrationId>>;
+  defaultProjectTypeIntegrations?: Partial<Record<ProjectTypeId, IntegrationId>>;
+  nativeFrameworkSupport?: Partial<Record<FrameworkId, string>>;
   exclusive?: boolean;
 }
 
 export interface IntegrationSupport {
   ecosystems: EcosystemId[];
   frameworks?: FrameworkId[];
+  frameworkVersionConstraints?: Partial<Record<FrameworkId, string>>;
   packageManagers?: PackageManagerId[];
 }
 
@@ -29,7 +34,9 @@ export type IntegrationTrustLevel =
   | "official"
   | "verified"
   | "community"
+  | "local"
   | "experimental";
+export type IntegrationSetupMaturity = "install" | "configure" | "managed";
 
 export interface IntegrationDependencyRequirement {
   name: string;
@@ -42,9 +49,18 @@ export interface IntegrationDocumentation {
   quickstart?: string;
 }
 
+export interface IntegrationConfigurationOption {
+  id: string;
+  label: string;
+  description?: string;
+  required?: boolean;
+  defaultValue?: string | number | boolean;
+}
+
 export interface IntegrationSource {
-  owner: "avis" | "community";
+  owner: "avis" | "community" | "local";
   repository?: string;
+  path?: string;
 }
 
 export interface AvisIntegrationManifest {
@@ -55,9 +71,12 @@ export interface AvisIntegrationManifest {
   version: string;
   status: IntegrationStatus;
   trust: IntegrationTrustLevel;
+  setupMaturity: IntegrationSetupMaturity;
   supports: IntegrationSupport;
   dependencies?: IntegrationDependencyRequirement[];
+  configurationOptions?: IntegrationConfigurationOption[];
   configures?: string[];
+  repair?: "unsupported" | "plan";
   documentation?: IntegrationDocumentation;
   source?: IntegrationSource;
 }

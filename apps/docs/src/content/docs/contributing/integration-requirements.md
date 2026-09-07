@@ -30,6 +30,8 @@ Each official integration should document:
 
 - capability
 - status
+- trust
+- setup maturity
 - supported ecosystems and frameworks
 - command
 - what Avis does

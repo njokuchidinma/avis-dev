@@ -8,6 +8,8 @@ An integration is an implementation of a capability for a supported project type
 Each built-in integration includes:
 
 - an ID, name, description, version, and status
+- trust metadata describing who vouches for the integration
+- setup maturity describing how deeply Avis can install, configure, or manage it
 - a capability
 - supported ecosystems, frameworks, and package managers
 - dependencies it may install

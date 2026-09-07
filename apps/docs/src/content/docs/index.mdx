@@ -60,6 +60,18 @@ Avis starts after project initialization. It detects the project you already hav
 
 The public path is capability-first. You do not need to know whether the right command is `avis add lucide-react`, `avis add react-icons`, or `avis add heroicons-react`; start with `avis add icons` and let Avis show the recommendation and alternatives.
 
+## V3.1 Alpha Focus
+
+V3.1 is a release-hardening pass. It introduces clearer setup maturity, stronger catalog validation, fixture-based QA, packaged CLI smoke testing, and safer repair behavior.
+
+Avis now classifies integration support as:
+
+- `install`: add a compatible dependency
+- `configure`: add dependency plus useful starter files or configuration
+- `managed`: verify setup health and generate supported repair plans
+
+Repair is intentionally conservative. `avis repair` only runs where an integration declares repair-plan support, and it checks Avis' recorded file hashes before mutating managed files. If local edits make a repair ambiguous, Avis stops for manual review rather than overwriting user work.
+
 ## How Avis Works
 
 <CardGrid>
@@ -81,10 +93,10 @@ The public path is capability-first. You do not need to know whether the right c
 
 <CardGrid>
 	<Card title="Next.js" icon="seti:javascript">
-		Status: alpha. Current integrations: Zustand, Redux Toolkit, TanStack Query, Zod, React Hook Form, Lucide React, React Icons, and Heroicons React.
+		Status: alpha. Current integrations include Zustand, Redux Toolkit, TanStack Query, Zod, React Hook Form, Auth.js, Sentry for Next.js, Lucide React, React Icons, and Heroicons React.
 	</Card>
 	<Card title="Django" icon="seti:python">
-		Status: alpha. Current integration: Django REST Framework.
+		Status: alpha. Managed support includes Django REST Framework and django-cors-headers. Configure-level support includes Celery, Redis, storage, email, API docs, and Sentry snippets.
 	</Card>
 	<Card title="Laravel" icon="seti:php">
 		Status: alpha. Current integration: Laravel Sanctum.
@@ -104,6 +116,8 @@ Avis is currently in active development. Review ChangePlans before applying chan
 ## More Than Installation
 
 `avis doctor` is a core part of Avis. A dependency being present is not enough to mark an integration healthy. For example, a Next.js project with `@tanstack/react-query` installed but no generated provider module is reported as partially configured.
+
+The V3.1 release gate also tests the package as users receive it: Avis packs the npm artifact, installs the generated tarball into a clean temporary project, and exercises the installed `avis` binary before release.
 
 ## Contribute
 

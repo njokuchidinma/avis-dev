@@ -21,6 +21,33 @@ Verify the command is available:
 
 ```sh
 avis list
+avis --version
+```
+
+## Update Avis
+
+During alpha, update an existing global install by reinstalling the `alpha` tag:
+
+```sh
+npm install -g avis-dev@alpha
+```
+
+Avis can print the update instructions locally:
+
+```sh
+avis upgrade
+```
+
+To see which package version is currently installed:
+
+```sh
+avis --version
+```
+
+To inspect npm's current package tags:
+
+```sh
+npm dist-tag ls avis-dev
 ```
 
 ## Important Distinction

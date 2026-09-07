@@ -18,5 +18,8 @@ Current commands:
 - `avis stack use <stack>`
 - `avis integration create <integration-id>`
 - `avis doctor [--json] [--strict]`
+- `avis --version`
+- `avis upgrade`
+- `avis update`
 
 This documentation only includes commands present in the current CLI implementation.

@@ -1,0 +1,12 @@
+{
+  "name": "release-next-auth-src-app",
+  "packageManager": "pnpm@11.24.0",
+  "dependencies": {
+    "next": "16.0.0",
+    "next-auth": "beta",
+    "react": "20.0.0"
+  },
+  "devDependencies": {
+    "typescript": "7.0.2"
+  }
+}
