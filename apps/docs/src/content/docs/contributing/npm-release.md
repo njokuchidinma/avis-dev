@@ -81,6 +81,11 @@ The test suite also validates the release catalog contract:
 - framework-specific recommendations take precedence over ecosystem defaults
 - `managed` integrations expose verification, repair-plan support, non-dependency configuration behavior, and release fixture coverage
 
+The core integration tests include a minimal release fixture QA gate for:
+
+- Next.js/Auth.js `src/app` generated route imports, idempotence, break detection, and repair
+- Django managed integrations, including Django REST Framework and django-cors-headers repair/idempotence
+
 The package also has publish guards:
 
 - `prepack` builds the bundled CLI in `dist`.
