@@ -14,6 +14,14 @@ describe("Avis CLI E2E", () => {
     vi.restoreAllMocks();
   });
 
+  it("prints help without entering interactive add flow", async () => {
+    const output = await captureStdout(() => runCli(["--help"]));
+
+    expect(output).toContain("Usage:");
+    expect(output).toContain("avis doctor [--json] [--strict]");
+    expect(process.exitCode).toBe(originalExitCode);
+  });
+
   it("shows capability defaults, native support, and setup maturity", async () => {
     const output = await captureStdout(() => runCli(["show", "api-documentation"]));
 

@@ -55,6 +55,23 @@ pnpm release:check
 ```
 
 This refreshes generated registry docs, generates the native target manifest, runs type checking, runs tests, builds the package and docs site, and performs an npm pack dry run.
+It also runs the npm artifact smoke test, which creates a real tarball, installs it into a temporary project outside the monorepo, and exercises the shipped `avis` binary.
+
+To run only the artifact smoke test:
+
+```sh
+pnpm release:smoke
+```
+
+The smoke test verifies:
+
+- `avis --version`
+- `avis --help`
+- `avis list`
+- `avis search authentication`
+- `avis doctor`
+- `avis stack list`
+- `avis integration list`
 
 The package also has publish guards:
 

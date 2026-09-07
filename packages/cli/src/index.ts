@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { readFileSync } from "node:fs";
+import { readFileSync, realpathSync } from "node:fs";
 import { access, mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { createInterface } from "node:readline/promises";
@@ -103,6 +103,10 @@ export async function runCli(argv = process.argv.slice(2)): Promise<void> {
   const args = argv[0] === "--" ? argv.slice(1) : argv;
   if (args.includes("--version") || args.includes("-v")) {
     printVersion();
+    return;
+  }
+  if (args.includes("--help") || args.includes("-h")) {
+    printHelp();
     return;
   }
 
@@ -1688,7 +1692,18 @@ if (isEntrypoint()) {
 
 function isEntrypoint(): boolean {
   const entrypoint = process.argv[1];
-  return entrypoint ? path.resolve(fileURLToPath(import.meta.url)) === path.resolve(entrypoint) : false;
+  return entrypoint
+    ? resolveEntrypointPath(fileURLToPath(import.meta.url)) ===
+        resolveEntrypointPath(entrypoint)
+    : false;
+}
+
+function resolveEntrypointPath(value: string): string {
+  try {
+    return realpathSync(value);
+  } catch {
+    return path.resolve(value);
+  }
 }
 
 function handleCliError(error: unknown): void {
