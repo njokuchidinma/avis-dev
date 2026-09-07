@@ -16,6 +16,8 @@ Current protections:
 - file paths are checked as safe relative paths
 - file creation refuses to overwrite existing files
 - integrations verify project state after setup when a verifier exists
+- `avis repair` checks Avis state hashes before mutating files Avis has already
+  touched, and fails closed when a file has changed since Avis last recorded it
 
 Current expectations:
 
@@ -27,3 +29,16 @@ Current expectations:
 - treat Avis as alpha software while the project is in active development
 
 Avis should fail closed when it cannot confidently detect or configure a supported project.
+
+## Current Alpha Limitations
+
+Avis does not claim broad transactional guarantees across every possible package
+manager failure. File mutations are snapshotted and rolled back when an apply
+fails, and newly added dependencies are removed when the package manager exposes
+a safe remove command. If a package manager operation fails in a way Avis cannot
+reverse confidently, review the project with version control before continuing.
+
+Generated framework snippets are intentionally conservative. For example, some
+Django integrations create opt-in settings snippets instead of automatically
+rewriting complex settings modules. Provider-specific variants for storage,
+email, Redis, and monitoring are expected to deepen incrementally after alpha.

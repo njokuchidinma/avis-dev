@@ -83,8 +83,15 @@ The test suite also validates the release catalog contract:
 
 The core integration tests include a minimal release fixture QA gate for:
 
-- Next.js/Auth.js `src/app` generated route imports, idempotence, break detection, and repair
+- Next.js/Auth.js `src/app` generated route imports, idempotence, break detection, and re-planning
 - Django managed integrations, including Django REST Framework and django-cors-headers repair/idempotence
+
+Before publishing an alpha, review known limitations:
+
+- repair fails closed on ambiguous user-modified files instead of silently overwriting them
+- some configure-level Django integrations generate opt-in settings snippets
+- provider-specific variants for email, storage, Redis, and monitoring are post-release work
+- package-manager rollback depends on the target package manager exposing a safe remove command
 
 The package also has publish guards:
 

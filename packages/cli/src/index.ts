@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { createHash } from "node:crypto";
 import { readFileSync, realpathSync } from "node:fs";
 import { access, mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
@@ -32,6 +33,7 @@ import {
   validateChangePlan,
   type AvisIntegration,
   type Diagnostic,
+  type Operation,
   type PackagedIntegration,
   type ProjectContext,
   type VerificationResult
@@ -733,7 +735,9 @@ async function runRepair(subject: string, options: CliOptions): Promise<void> {
     return;
   }
 
-  await planConfirmApplyAndVerify(integration, context, runtime.registry, options);
+  await planConfirmApplyAndVerify(integration, context, runtime.registry, options, {
+    repair: true
+  });
 }
 
 async function runAddInteractive(): Promise<void> {
@@ -870,7 +874,8 @@ async function planConfirmApplyAndVerify(
   integration: AvisIntegration,
   context: ProjectContext,
   integrationRegistry: IntegrationRegistry,
-  options: CliOptions
+  options: CliOptions,
+  behavior: { repair?: boolean } = {}
 ): Promise<void> {
   const compatibility = integration.isCompatible(context);
 
@@ -891,6 +896,9 @@ async function planConfirmApplyAndVerify(
 
   const plan = await integration.plan({ context });
   const validation = validateChangePlan(plan);
+  const repairSafetyDiagnostics = behavior.repair
+    ? await getRepairSafetyDiagnostics(integration, context, plan)
+    : [];
 
   console.log(formatDetectedProject(context));
   console.log("");
@@ -904,6 +912,17 @@ async function planConfirmApplyAndVerify(
         console.error(`- ${diagnostic.message}`);
       }
     }
+    process.exitCode = 1;
+    return;
+  }
+
+  if (repairSafetyDiagnostics.length > 0) {
+    console.error("");
+    console.error("Avis cannot safely repair this integration automatically:");
+    for (const diagnostic of repairSafetyDiagnostics) {
+      console.error(`- ${diagnostic.message}`);
+    }
+    console.error("Review the file manually, then run avis repair again if appropriate.");
     process.exitCode = 1;
     return;
   }
@@ -934,6 +953,89 @@ async function planConfirmApplyAndVerify(
   }
 
   await printVerification(integration, context);
+}
+
+async function getRepairSafetyDiagnostics(
+  integration: AvisIntegration,
+  context: ProjectContext,
+  plan: Awaited<ReturnType<AvisIntegration["plan"]>>
+): Promise<Diagnostic[]> {
+  const state = await readAvisProjectState(context.targetRoot);
+  const record = state.integrations[integration.manifest.id];
+  const diagnostics: Diagnostic[] = [];
+
+  for (const operation of plan.operations) {
+    if (!writesProjectFile(operation)) {
+      continue;
+    }
+
+    const recordedFile = record?.files.find((file) => file.path === operation.path);
+    if (!recordedFile) {
+      if (operation.type === "file.create") {
+        continue;
+      }
+
+      diagnostics.push({
+        severity: "error",
+        message: `Repair would modify ${operation.path}, but Avis has no ownership record for that file.`
+      });
+      continue;
+    }
+
+    if (!recordedFile.hash) {
+      diagnostics.push({
+        severity: "error",
+        message: `Repair would modify ${operation.path}, but Avis has no recorded baseline hash for that file.`
+      });
+      continue;
+    }
+
+    const currentHash = await hashProjectFileIfPresent(context, operation.path);
+    if (!currentHash && operation.type !== "file.create") {
+      diagnostics.push({
+        severity: "error",
+        message: `Repair would modify ${operation.path}, but the file no longer exists.`
+      });
+      continue;
+    }
+
+    if (currentHash && currentHash !== recordedFile.hash) {
+      diagnostics.push({
+        severity: "error",
+        message: `Repair would modify ${operation.path}, but it has changed since Avis last updated it.`
+      });
+    }
+  }
+
+  return diagnostics;
+}
+
+function writesProjectFile(operation: Operation): operation is Extract<
+  Operation,
+  { type: "file.create" | "json.merge" | "text.patch" | "env.ensure" }
+> {
+  return (
+    operation.type === "file.create" ||
+    operation.type === "json.merge" ||
+    operation.type === "text.patch" ||
+    operation.type === "env.ensure"
+  );
+}
+
+async function hashProjectFileIfPresent(
+  context: ProjectContext,
+  relativePath: string
+): Promise<string | undefined> {
+  try {
+    const contents = await readFile(resolveInsideRoot(context.targetRoot, relativePath));
+    return createHash("sha256").update(contents).digest("hex");
+  } catch (error) {
+    if (isFileNotFoundError(error)) {
+      return undefined;
+    }
+
+    throw error;
+  }
 }
 
 async function runDoctor(options: CliOptions): Promise<void> {
@@ -1704,6 +1806,15 @@ function resolveEntrypointPath(value: string): string {
   } catch {
     return path.resolve(value);
   }
+}
+
+function isFileNotFoundError(error: unknown): boolean {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    error.code === "ENOENT"
+  );
 }
 
 function handleCliError(error: unknown): void {

@@ -1,7 +1,14 @@
-import { mkdir, mkdtemp, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import {
+  applyChangePlan,
+  createProjectContext,
+  detectProject,
+  djangoRestFrameworkIntegration,
+  recordAppliedIntegrationPlan
+} from "@avis/core";
 import { runCli } from "./index.js";
 
 describe("Avis CLI E2E", () => {
@@ -60,12 +67,55 @@ describe("Avis CLI E2E", () => {
     );
     expect(process.exitCode).toBe(1);
   });
+
+  it("refuses repair when an Avis-touched file was modified by the user", async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), "avis-cli-repair-safety-"));
+    await mkdir(path.join(root, "config"), { recursive: true });
+    await writeFile(
+      path.join(root, "requirements.txt"),
+      "Django>=5.0\ndjangorestframework>=3.15\n",
+      "utf8"
+    );
+    await writeFile(
+      path.join(root, "manage.py"),
+      `import os
+
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings")
+`,
+      "utf8"
+    );
+    await writeFile(
+      path.join(root, "config/settings.py"),
+      createBareDjangoSettings(),
+      "utf8"
+    );
+    process.chdir(root);
+
+    const context = createProjectContext(await detectProject(root));
+    const setupPlan = await djangoRestFrameworkIntegration.plan({ context });
+    await applyChangePlan(setupPlan);
+    await recordAppliedIntegrationPlan(setupPlan, djangoRestFrameworkIntegration);
+    await writeFile(
+      path.join(root, "config/settings.py"),
+      `${createBareDjangoSettings()}\n# user changed this file after Avis setup\n`,
+      "utf8"
+    );
+
+    await captureStderr(() =>
+      runCli(["repair", "django-rest-framework", "--yes"])
+    );
+
+    expect(await readFile(path.join(root, "config/settings.py"), "utf8")).not.toContain(
+      '"rest_framework"'
+    );
+    expect(process.exitCode).toBe(1);
+  });
 });
 
 async function captureStdout(action: () => Promise<void>): Promise<string> {
   let output = "";
-  const spy = vi.spyOn(console, "log").mockImplementation((message = "") => {
-    output += `${String(message)}\n`;
+  const spy = vi.spyOn(console, "log").mockImplementation((...messages) => {
+    output += `${messages.map(String).join(" ")}\n`;
   });
 
   await action();
@@ -75,11 +125,18 @@ async function captureStdout(action: () => Promise<void>): Promise<string> {
 
 async function captureStderr(action: () => Promise<void>): Promise<string> {
   let output = "";
-  const spy = vi.spyOn(console, "error").mockImplementation((message = "") => {
-    output += `${String(message)}\n`;
+  const spy = vi.spyOn(console, "error").mockImplementation((...messages) => {
+    output += `${messages.map(String).join(" ")}\n`;
   });
 
   await action();
   spy.mockRestore();
   return output;
+}
+
+function createBareDjangoSettings(): string {
+  return `INSTALLED_APPS = [
+    "django.contrib.admin",
+]
+`;
 }
