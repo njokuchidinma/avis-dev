@@ -30,6 +30,8 @@ Avis uses the detected Node package manager for Next.js project dependencies.
 - forms
 - validation
 - icons
+- authentication
+- monitoring
 
 ## Current Integrations
 
@@ -38,6 +40,8 @@ Avis uses the detected Node package manager for Next.js project dependencies.
 - TanStack Query
 - React Hook Form
 - Zod
+- Auth.js / NextAuth
+- Sentry for Next.js
 - Lucide React
 - React Icons
 - Heroicons React
@@ -50,6 +54,8 @@ avis add data-fetching
 avis add forms
 avis add validation
 avis add icons
+avis add auth
+avis add monitoring
 ```
 
 ## What Avis May Change
@@ -63,6 +69,8 @@ Examples:
 - `forms` installs React Hook Form and creates a starter form component.
 - `validation` installs Zod and creates a starter schema module.
 - `icons` installs Lucide React by default and can also offer React Icons or Heroicons React.
+- `auth` creates configure-level Auth.js route scaffolding for App Router layouts.
+- `monitoring` creates configure-level Sentry starter files and environment examples.
 
 ## Not Handled By Avis
 

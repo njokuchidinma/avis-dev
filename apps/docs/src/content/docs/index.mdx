@@ -20,6 +20,8 @@ Avis is a source-available, ecosystem-agnostic CLI that safely adds, configures,
 
 Framework scaffolders create the project. Avis equips it.
 
+Avis is for the part after the starter template: the moment you realize a real app still needs auth, validation, forms, API tooling, monitoring, storage, email, caching, background jobs, and a dozen careful little setup steps you have done before.
+
 ```txt
 $ npm install -g avis-dev@alpha
 $ cd my-next-app
@@ -60,6 +62,23 @@ Avis starts after project initialization. It detects the project you already hav
 
 The public path is capability-first. You do not need to know whether the right command is `avis add lucide-react`, `avis add react-icons`, or `avis add heroicons-react`; start with `avis add icons` and let Avis show the recommendation and alternatives.
 
+## What Avis Gives You
+
+<CardGrid>
+	<Card title="Capability-first setup" icon="puzzle">
+		Ask for what your project needs: `auth`, `forms`, `monitoring`, `storage`, `background-jobs`, or `api-documentation`. Avis maps the purpose to compatible tools for the detected project.
+	</Card>
+	<Card title="ChangePlans before changes" icon="document">
+		Avis shows dependencies, files, environment entries, and configuration patches before applying them. You see the work before it touches the repo.
+	</Card>
+	<Card title="Real project verification" icon="check-circle">
+		`avis doctor` inspects the actual project state. A package installed in `package.json` or `requirements.txt` is not treated as complete setup by itself.
+	</Card>
+	<Card title="Safer repair" icon="setting">
+		V3.1 repair flows are explicit and conservative. Managed repair checks Avis state hashes and stops when local edits make automation ambiguous.
+	</Card>
+</CardGrid>
+
 ## V3.1 Alpha Focus
 
 V3.1 is a release-hardening pass. It introduces clearer setup maturity, stronger catalog validation, fixture-based QA, packaged CLI smoke testing, and safer repair behavior.
@@ -71,6 +90,23 @@ Avis now classifies integration support as:
 - `managed`: verify setup health and generate supported repair plans
 
 Repair is intentionally conservative. `avis repair` only runs where an integration declares repair-plan support, and it checks Avis' recorded file hashes before mutating managed files. If local edits make a repair ambiguous, Avis stops for manual review rather than overwriting user work.
+
+## V3.1 Integration Depth
+
+<CardGrid>
+	<Card title="Next.js" icon="seti:javascript">
+		Zustand, Redux Toolkit, TanStack Query, Zod, React Hook Form, Auth.js, Sentry for Next.js, Lucide React, React Icons, and Heroicons React.
+	</Card>
+	<Card title="Django" icon="seti:python">
+		Managed Django REST Framework and django-cors-headers, plus configure-level Celery, Redis, Anymail, Storages, DRF Spectacular, and Sentry support.
+	</Card>
+	<Card title="Backend services" icon="server">
+		SQLAlchemy, Redis, Resend, AWS S3 SDK, Swagger UI Express, FastAPI settings, Go/Gin validation, pgx, GORM, Viper, and Sentry ecosystem entries.
+	</Card>
+	<Card title="Cross-ecosystem alpha" icon="rocket">
+		Node, Python, PHP, Dart, Rust, and Go project signals are represented in the registry, with support depth documented per framework and integration.
+	</Card>
+</CardGrid>
 
 ## How Avis Works
 
@@ -118,6 +154,13 @@ Avis is currently in active development. Review ChangePlans before applying chan
 `avis doctor` is a core part of Avis. A dependency being present is not enough to mark an integration healthy. For example, a Next.js project with `@tanstack/react-query` installed but no generated provider module is reported as partially configured.
 
 The V3.1 release gate also tests the package as users receive it: Avis packs the npm artifact, installs the generated tarball into a clean temporary project, and exercises the installed `avis` binary before release.
+
+## Explore the Catalog
+
+- Start with [Supported Projects](/getting-started/supported-projects/) to see framework-level support.
+- Read [Integration Maturity](/concepts/integration-maturity/) to understand install, configure, and managed setup.
+- Browse [Integrations](/integrations/) for capability-grouped integration pages.
+- Check the [Generated Registry](/generated/registry/) for the complete manifest table.
 
 ## Contribute
 

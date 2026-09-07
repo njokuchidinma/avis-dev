@@ -61,6 +61,7 @@ export default defineConfig({
 						{ label: 'How Avis Works', slug: 'concepts/how-avis-works' },
 						{ label: 'Capabilities', slug: 'concepts/capabilities' },
 						{ label: 'Integrations', slug: 'concepts/integrations' },
+						{ label: 'Integration Maturity', slug: 'concepts/integration-maturity' },
 						{ label: 'Project Detection', slug: 'concepts/project-detection' },
 						{ label: 'ChangePlan', slug: 'concepts/changeplan' },
 						{ label: 'Verification', slug: 'concepts/verification' },
